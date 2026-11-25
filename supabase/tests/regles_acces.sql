@@ -747,6 +747,33 @@ SELECT pg_temp.attendre('Budget : aucune notification vers l''auteur',
 SELECT pg_temp.attendre('Budget : rien pour un commentaire de plus d''un jour', jsonb_array_length(public.notifications_budget(ARRAY[:com_ancien]::bigint[], '00000000-0000-0000-0000-00000000000c')), 0);
 SELECT pg_temp.attendre('Budget : rien si l''auteur demandé n''est pas l''auteur', jsonb_array_length(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000d')), 0);
 SELECT pg_temp.attendre('Budget : rien pour un magasin hors du périmètre de l''auteur', jsonb_array_length(public.notifications_budget(ARRAY[:com_nice]::bigint[], '00000000-0000-0000-0000-00000000000c')), 0);
+-- Carnet du magasin (0053) : les notes en off restent dans la rubrique « notes », jamais renvoyées au franchisé
+INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES ('Lille', 'notes', '[{"id":"n1","date":"2026-11-24","texte":"Note en off du Coach","par":"Coach Nord","ton":"alerte","reponses":[{"id":"r1","quand":"2026-11-24T18:00:00Z","texte":"Réponse du RR","par":"RR"}]}]')
+ON CONFLICT (store_name, cle) DO UPDATE SET valeur = EXCLUDED.valeur;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Carnet : le franchisé ne lit pas la rubrique des notes', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'notes'), 0);
+SELECT pg_temp.attendre('Carnet : ni par son espace', position('Note en off' IN public.espace_franchise()::text) + position('Réponse du RR' IN public.espace_franchise()::text), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Carnet : le Coach lit les notes de son magasin', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'notes' AND store_name = 'Lille'), 1);
+RESET ROLE;
+-- Commentaire « équipe seule » (pilotage 0037, réseau 0053) : jamais vers le téléphone d'un franchisé
+SELECT pg_temp.attendre('Budget : un franchisé de Lille est bien abonné (sinon le contrôle suivant ne prouve rien)',
+  ((SELECT count(*) FROM public.abonnements_push a JOIN public.acces_franchises f ON f.user_id = a.user_id WHERE public.compte_lit_magasin(a.user_id, 'Lille', false)) > 0)::int, 1);
+ALTER TABLE pilotage.echanges_budget ADD COLUMN IF NOT EXISTS equipe boolean NOT NULL DEFAULT false;
+\ir ../migrations/0053_notes_equipe.sql
+INSERT INTO pilotage.echanges_budget (store_name, annee, texte, auteur, auteur_nom, equipe) VALUES
+  ('Lille', 2027, 'Masse salariale : on en parle entre nous', '00000000-0000-0000-0000-00000000000c', 'Coach Nord', true) RETURNING id AS com_equipe \gset
+SELECT pg_temp.attendre('Budget : le commentaire de l''équipe seule ne part vers aucun franchisé',
+  (SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com_equipe]::bigint[], '00000000-0000-0000-0000-00000000000c')) n
+   WHERE n->>'endpoint' IN (SELECT a.endpoint FROM public.abonnements_push a JOIN public.acces_franchises f ON f.user_id = a.user_id)), 0);
+SELECT pg_temp.attendre('Budget : il part vers le reste de l''équipe de Lille',
+  (SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com_equipe]::bigint[], '00000000-0000-0000-0000-00000000000c'))),
+  (SELECT count(*) FROM public.abonnements_push a WHERE a.user_id <> '00000000-0000-0000-0000-00000000000c' AND public.compte_lit_magasin(a.user_id, 'Lille', false)
+     AND NOT EXISTS (SELECT 1 FROM public.acces_franchises f WHERE f.user_id = a.user_id)));
+SELECT pg_temp.attendre('Budget : un commentaire ordinaire part toujours vers le franchisé',
+  ((SELECT count(*) FROM jsonb_array_elements(public.notifications_budget(ARRAY[:com]::bigint[], '00000000-0000-0000-0000-00000000000c')) n
+   WHERE n->>'endpoint' IN (SELECT a.endpoint FROM public.abonnements_push a JOIN public.acces_franchises f ON f.user_id = a.user_id)) > 0)::int, 1);
 SET ROLE authenticated;
 SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
 SELECT pg_temp.attendre('Budget : un compte n''appelle pas l''envoi des notifications', pg_temp.refuse('SELECT public.notifications_budget(ARRAY[1]::bigint[], ''00000000-0000-0000-0000-00000000000c'')'), 1);
@@ -1257,3 +1284,52 @@ SELECT pg_temp.attendre('Coach : ajout accepté avec un numéro distinct',
   (SELECT count(DISTINCT id) FROM public.cs_overrides WHERE cs_name LIKE 'Coach 0052%' AND id IS NOT NULL), 2);
 DELETE FROM public.cs_overrides WHERE cs_name LIKE 'Coach 0052%';
 ALTER TABLE public.cs_overrides DROP COLUMN ancienne_colonne;
+
+-- ── Accès « Direction » en lecture (0054) : lit tout le réseau, n'écrit que dans le carnet
+RESET ROLE;
+RESET request.jwt.claim.sub;
+\ir ../migrations/0054_acces_direction.sql
+INSERT INTO auth.users (id, email, raw_app_meta_data) VALUES
+  ('00000000-0000-0000-0000-00000000000a', 'direction@exemple.fr', '{"role":"direction","direction":"Dora GENERALE"}'),
+  ('00000000-0000-0000-0000-0000000000a2', 'futur-dg@exemple.fr', '{}')
+ON CONFLICT (id) DO NOTHING;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
+SELECT pg_temp.attendre('Direction : son rôle et son nom', (public.mon_acces()->>'role' = 'direction' AND public.mon_acces()->>'direction' = 'Dora GENERALE')::int, 1);
+
+SELECT pg_temp.attendre('Direction : visites des deux magasins', (SELECT count(DISTINCT store) FROM public.visits WHERE store IN ('Lille', 'Nice')), 2);
+SELECT pg_temp.attendre('Direction : le carnet de tous les magasins', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'notes' AND store_name = 'Lille'), 1);
+SELECT pg_temp.attendre('Direction : les fiches et les réglages', ((SELECT count(*) FROM public.fiches_personnes) > 0 AND (SELECT count(*) FROM public.app_config) > 0)::int, 1);
+SELECT pg_temp.attendre('Direction : le périmètre de l''équipe', (SELECT count(*) FROM public.perimetre_equipe WHERE store_name IN ('Lille', 'Nice')), 2);
+SELECT pg_temp.attendre('Direction : les fonctions de lecture de l''équipe', pg_temp.refuse('SELECT public.reperes_equipe(ARRAY[''Lille''])') + pg_temp.refuse('SELECT public.questions_equipe()') + pg_temp.refuse('SELECT public.historique_modifications(now() - interval ''1 day'', 10)'), 0);
+SELECT pg_temp.attendre('Direction : pas les accès des franchisés', (SELECT count(*) FROM public.acces_franchises), 0);
+SELECT pg_temp.attendre('Direction : pas les appareils abonnés', pg_temp.refuse('SELECT count(*) FROM public.abonnements_push'), 1);
+SELECT pg_temp.attendre('Direction : pas la messagerie privée', pg_temp.refuse('SELECT count(*) FROM public.messages'), 1);
+SELECT pg_temp.attendre('Direction : n''ajoute pas de visite', pg_temp.refuse('INSERT INTO public.visits (store, visit_date) VALUES (''Lille'', ''2026-11-25'')'), 1);
+WITH m AS (UPDATE public.store_overrides SET resp = 'Intrus' WHERE store_name = 'Lille' RETURNING 1)
+SELECT pg_temp.attendre('Direction : ne modifie pas un magasin', (SELECT count(*) FROM m), 0);
+SELECT pg_temp.attendre('Direction : n''écrit pas une tâche', pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''actions'', ''[]'')'), 1);
+WITH m AS (UPDATE public.suivi_magasins SET valeur = '[]' WHERE store_name = 'Lille' AND cle = 'actions' RETURNING 1)
+SELECT pg_temp.attendre('Direction : ne vide pas les tâches', (SELECT count(*) FROM m), 0);
+SELECT pg_temp.attendre('Direction : écrit une note dans le carnet', pg_temp.refuse('INSERT INTO public.suivi_magasins (store_name, cle, valeur) VALUES (''Nice'', ''notes'', ''[{"id":"nd","texte":"Note de la Direction"}]'')'), 0);
+WITH m AS (UPDATE public.suivi_magasins SET valeur = valeur || '[{"id":"nd2","texte":"Réponse de la Direction"}]' WHERE store_name = 'Lille' AND cle = 'notes' RETURNING 1)
+SELECT pg_temp.attendre('Direction : répond dans le carnet', (SELECT count(*) FROM m), 1);
+SELECT pg_temp.attendre('Direction : n''ouvre pas d''accès', pg_temp.refuse('SELECT public.ouvrir_acces_direction(''futur-dg@exemple.fr'', ''Intrus'')'), 1);
+SELECT pg_temp.attendre('Direction : ne tient pas le périmètre', pg_temp.refuse('SELECT public.maj_perimetre_equipe(''[]'')'), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Direction : le franchisé ne lit toujours pas le carnet', (SELECT count(*) FROM public.suivi_magasins WHERE cle = 'notes'), 0);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000c';
+SELECT pg_temp.attendre('Direction : un Coach n''ouvre pas d''accès Direction', pg_temp.refuse('SELECT public.ouvrir_acces_direction(''futur-dg@exemple.fr'', ''Intrus'')'), 1);
+SELECT pg_temp.attendre('Direction : un Coach ne lit pas la liste', (public.liste_acces_direction() IS NULL)::int, 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000d';
+SELECT public.ouvrir_acces_direction('futur-dg@exemple.fr', 'Futur DG');
+SELECT pg_temp.attendre('Direction : ouverte par le Directeur', jsonb_array_length(public.liste_acces_direction()), 2);
+SELECT pg_temp.attendre('Direction : pas sur un compte de franchisé', pg_temp.refuse('SELECT public.ouvrir_acces_direction(''franchise@exemple.fr'', ''X'')'), 1);
+SELECT pg_temp.attendre('Direction : pas sur un compte de Coach', pg_temp.refuse('SELECT public.ouvrir_acces_direction(''coach@exemple.fr'', ''X'')'), 1);
+SELECT public.couper_acces_direction('00000000-0000-0000-0000-0000000000a2');
+SELECT pg_temp.attendre('Direction : coupée par le Directeur', jsonb_array_length(public.liste_acces_direction()), 1);
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a2';
+SELECT pg_temp.attendre('Direction : un accès coupé ne lit plus rien', (SELECT count(*) FROM public.visits) + (SELECT count(*) FROM public.suivi_magasins), 0);
+RESET ROLE;
+RESET request.jwt.claim.sub;
+DELETE FROM public.suivi_magasins WHERE store_name = 'Nice' AND cle = 'notes';

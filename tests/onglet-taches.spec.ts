@@ -62,7 +62,7 @@ test('téléphone : Visites quitte la barre du bas et reste dans le menu du comp
   test.skip(!isMobile, 'Barre du bas du téléphone')
   await seConnecter(page)
   const barre = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
+  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
   await page.getByRole('button', { name: 'Mon compte' }).click()
   await page.getByRole('menu').getByRole('menuitem', { name: 'Visites', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Visites' })).toBeVisible()

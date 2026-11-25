@@ -23,6 +23,8 @@ export type MessageSimule = {
   id: number; store_name: string; annee: number; sujet?: string; texte: string; auteur: string | null; auteur_role: string | null; auteur_nom: string | null; cree_le: string
   // Commentaires (migration 0025) : point commenté, réponse à, « Résolu »
   ancre?: string; ancre_libelle?: string | null; parent?: number | null; resolu_le?: string | null; resolu_par_role?: string | null; resolu_par_nom?: string | null
+  // 0037 : équipe seule, collègues prévenus
+  equipe?: boolean; mentions?: string[]
 }
 export type VersionSimulee = { id: number; store_name: string; annee: number; statut: string; base: unknown; ajustements: Record<string, unknown>; auteur_role: string | null; auteur_nom: string | null; cree_le: string }
 export type ActionSimulee = {
@@ -304,9 +306,10 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
         if (req.method() === 'DELETE') { const retirer = new Set(filtrer(messages, url.searchParams)); messages = messages.filter((l) => !retirer.has(l)) }
         else {
           // Comme le déclencheur de 0025 : une réponse prend le point de son commentaire ; rien n'arrive résolu
-          const c = corps as { store_name: string; annee: number; texte: string; ancre?: string; ancre_libelle?: string; parent?: number }
+          const c = corps as { store_name: string; annee: number; texte: string; ancre?: string; ancre_libelle?: string; parent?: number; equipe?: boolean; mentions?: string[] }
           const p = c.parent ? messages.find((x) => x.id === c.parent) : undefined
-          messages.push({ ...c, ancre: p ? p.ancre ?? 'budget' : c.ancre ?? 'budget', ancre_libelle: p ? p.ancre_libelle ?? null : c.ancre_libelle ?? null, parent: c.parent ?? null,
+          // Comme 0037 : une réponse prend la visibilité de son commentaire
+          messages.push({ ...c, equipe: p ? p.equipe === true : c.equipe === true, mentions: c.mentions ?? [], ancre: p ? p.ancre ?? 'budget' : c.ancre ?? 'budget', ancre_libelle: p ? p.ancre_libelle ?? null : c.ancre_libelle ?? null, parent: c.parent ?? null,
             resolu_le: null, resolu_par_role: null, resolu_par_nom: null, id: Math.max(0, ...messages.map((x) => x.id)) + 1, auteur: '00000000-0000-0000-0000-000000000001', auteur_role: options.role ?? 'directeur', auteur_nom: nomDuRole[options.role ?? 'directeur'] ?? null, cree_le: new Date().toISOString() })
         }
       }
@@ -386,7 +389,8 @@ export async function simulerPilotage(page: Page, options: OptionsSimulation = {
     if (table === 'stocks') return route.fulfill({ json: filtrer(stocks, url.searchParams) })
     if (table === 'correspondances_fec') return route.fulfill({ json: filtrer(correspondances, url.searchParams) })
     if (table === 'actions') return paginer(filtrer(actions, url.searchParams))
-    if (table === 'echanges_budget') return route.fulfill({ json: filtrer(messages, url.searchParams).sort((a, b) => a.cree_le.localeCompare(b.cree_le)) })
+    // 0037 : le franchisé ne lit pas les commentaires de l'équipe seule
+    if (table === 'echanges_budget') return route.fulfill({ json: filtrer(messages, url.searchParams).filter((m) => options.role !== 'franchise' || m.equipe !== true).sort((a, b) => a.cree_le.localeCompare(b.cree_le)) })
     if (table === 'versions_budget') return route.fulfill({ json: filtrer(versions, url.searchParams).sort((a, b) => b.cree_le.localeCompare(a.cree_le)) })
     if (table === 'ouvertures') return route.fulfill({ json: ouvertures })
     if (table === 'simulations') return simulations ? route.fulfill({ json: filtrer(simulations, url.searchParams).sort((a, b) => b.cree_le.localeCompare(a.cree_le)) }) : route.fulfill({ status: 404, json: { code: '42P01', message: 'relation does not exist' } })

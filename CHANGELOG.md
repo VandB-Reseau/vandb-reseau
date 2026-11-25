@@ -9,6 +9,18 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accès « Direction » en lecture (Joseph, 24/11/2026, lot 2 après le carnet). **Base : réseau 0054
+  (`0054_acces_direction.sql`) et pilotage 0038 (`0038_acces_direction.sql`, dépôt du pilotage), dans l'ordre qu'on veut,
+  après 0053.** Un DG ou un autre accès donné par le Directeur (Équipe › Organisation › « Accès Direction ») lit tout le
+  réseau comme le Directeur, carnets et budgets compris, et n'écrit que dans le carnet des magasins. Pas de réglages,
+  pas de « + », pas de messagerie privée ; jamais vu du franchisé.
+- Carnet du magasin et commentaires du budget en marge (Joseph, 24/11/2026, proposition A). **Base : pilotage 0037
+  (`0037_commentaires_equipe.sql`, dépôt du pilotage) PUIS réseau 0053 (`0053_notes_equipe.sql`).** Onglet « Carnet »
+  sur la fiche : notes en off de l'équipe (ton Alerte, À surveiller, Positif, Info ; thèmes ; collègues prévenus ;
+  réponses ; clore), mêlées aux comptes rendus, jamais lues par le franchisé. Alertes ouvertes dans « À traiter » ;
+  mentions, réponses et nouvelles alertes (RR, Directeur) dans la cloche. Budget : commentaires dans la marge à côté de
+  leur ligne sur PC, volet sur téléphone ; « Équipe seule » par défaut, sans notification au franchisé ; mentions dans
+  la cloche. Messagerie retirée des menus (ses adresses restent).
 - Fiche d'un Coach ou d'un RR plus visuelle (Joseph, 24/11/2026, choix 413 à 420), sans migration. Vue d'ensemble : phrase
   de lecture, portefeuille en cartes chiffrées avec l'écart au réseau ou à la région en flèche, répartition des magasins
   en 4 tons, jauge du rythme de visite de l'année avec le trait « à date ». Magasins (PC) : tableau en couleurs, médiane de

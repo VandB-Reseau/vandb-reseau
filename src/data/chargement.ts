@@ -1189,6 +1189,17 @@ export function enregistrerNoteMagasin(magasin: string, note: NoteMagasin) {
     await ecrireSuivi('notes_magasins', valeur, lu)
   })
 }
+// Modifie une note relue juste avant (une réponse arrivée entre-temps n'est pas écrasée) ; null : la note n'existe plus
+export function modifierNoteMagasin(magasin: string, id: string, changer: (n: NoteMagasin) => NoteMagasin) {
+  return enFile(async () => {
+    const lu = await lireSuivi<Record<string, NoteMagasin[]>>('notes_magasins', {})
+    const { valeur } = lu
+    const n = (valeur[magasin] ?? []).find((x) => x.id === id)
+    if (!n) throw new ErreurEnregistrement('note introuvable')
+    valeur[magasin] = (valeur[magasin] ?? []).map((x) => (x.id === id ? changer(x) : x))
+    await ecrireSuivi('notes_magasins', valeur, lu)
+  })
+}
 export function supprimerNoteMagasin(magasin: string, id: string) {
   return enFile(async () => {
     const lu = await lireSuivi<Record<string, NoteMagasin[]>>('notes_magasins', {})

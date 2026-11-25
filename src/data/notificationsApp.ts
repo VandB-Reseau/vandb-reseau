@@ -9,8 +9,9 @@ import { lienCompteRendu, visitesDuMagasin } from './visites'
 import { caDe, decalerMois, libelleMois } from './chiffres'
 import { brancher, preferenceChangee } from '../lib/preferences'
 import { pilotage } from '../pilotage/lib/supabase'
+import { evenementsCarnet } from './carnet'
 
-export type GenreNotification = 'commentaire' | 'tache' | 'retard' | 'compteRendu' | 'rapport' | 'cloture'
+export type GenreNotification = 'commentaire' | 'tache' | 'retard' | 'compteRendu' | 'rapport' | 'cloture' | 'note'
 export interface NotificationApp { id: string; genre: GenreNotification; titre: string; detail: string; quand: string; lien: string }
 
 const CLE = 'vandb-notifications-lues'
@@ -64,6 +65,10 @@ export function notificationsDuReseau(reseau: Reseau, profil: Profil | null): No
       // Refonte vague 4 (38B) : la cloche dit ce qui s'est passé ; une tâche en retard est à faire, elle vit dans À traiter
     }
   }
+  if (profil?.role !== 'franchise' && !reseau.espace) {
+    // Carnet du magasin (Joseph, 24/11/2026) : mentions, réponses, et pour le RR et le Directeur les nouvelles alertes
+    for (const e of evenementsCarnet(reseau, moi, depuis, profil?.role === 'rr' || profil?.role === 'directeur' || profil?.role === 'direction')) r.push({ ...e, genre: 'note', quand: e.quand.slice(0, 10) })
+  }
   if (profil?.role !== 'franchise') {
     // Vague 3 (29A) : un nouveau mois de caisse, un nouveau rapport du mois
     const mois = Object.values(reseau.chiffres).map((l) => l.filter((c) => caDe(c) !== null).at(-1)?.mois ?? '').sort().at(-1)
@@ -79,16 +84,23 @@ export function notificationsDuReseau(reseau: Reseau, profil: Profil | null): No
 }
 
 // Commentaires des budgets écrits par d'autres ces dernières semaines (la base ne renvoie que les magasins du compte)
-interface CommentaireRecent { id: number; store_name: string; ancre_libelle: string | null; texte: string; auteur: string | null; auteur_nom: string | null; cree_le: string }
-async function commentairesRecents(depuis: string, moi: string | undefined): Promise<NotificationApp[]> {
+interface CommentaireRecent { id: number; store_name: string; ancre_libelle: string | null; texte: string; auteur: string | null; auteur_nom: string | null; cree_le: string; mentions?: string[] | null }
+async function commentairesRecents(depuis: string, moi: string | undefined, monNom: string): Promise<NotificationApp[]> {
   try {
-    const { data, error } = await pilotage().from('echanges_budget').select('id, store_name, ancre_libelle, texte, auteur, auteur_nom, cree_le').gte('cree_le', depuis).order('cree_le', { ascending: false }).limit(40)
+    const lire = (colonnes: string) => pilotage().from('echanges_budget').select(colonnes).gte('cree_le', depuis).order('cree_le', { ascending: false }).limit(40)
+    // Mentions (migration pilotage 0037) ; sans elle, on relit sans
+    let lu = await lire('id, store_name, ancre_libelle, texte, auteur, auteur_nom, cree_le, mentions')
+    if (lu.error) lu = await lire('id, store_name, ancre_libelle, texte, auteur, auteur_nom, cree_le')
+    const { data, error } = lu
     if (error || !Array.isArray(data)) return []
-    return (data as CommentaireRecent[]).filter((c) => !moi || c.auteur !== moi).map((c) => ({
-      id: `c:${c.id}`, genre: 'commentaire' as const, titre: `${c.store_name} · Budget`,
-      detail: `${c.auteur_nom ?? 'Quelqu’un'} a commenté${c.ancre_libelle ? ` « ${c.ancre_libelle} »` : ''} : « ${c.texte.length > 120 ? `${c.texte.slice(0, 117)}…` : c.texte} »`,
-      quand: c.cree_le.slice(0, 10), lien: `/magasins/${encodeURIComponent(c.store_name)}?vue=budget&partie=budget&commentaires=1`,
-    }))
+    return (data as unknown as CommentaireRecent[]).filter((c) => !moi || c.auteur !== moi).map((c) => {
+      const mentionne = !!monNom && !!c.mentions?.includes(monNom)
+      return {
+        id: `c:${c.id}`, genre: 'commentaire' as const, titre: mentionne ? `${c.auteur_nom ?? 'Un collègue'} te mentionne · Budget ${c.store_name}` : `${c.store_name} · Budget`,
+        detail: `${c.auteur_nom ?? 'Quelqu’un'} a commenté${c.ancre_libelle ? ` « ${c.ancre_libelle} »` : ''} : « ${c.texte.length > 120 ? `${c.texte.slice(0, 117)}…` : c.texte} »`,
+        quand: c.cree_le.slice(0, 10), lien: `/magasins/${encodeURIComponent(c.store_name)}?vue=budget&partie=budget&commentaires=1`,
+      }
+    })
   } catch { return [] }
 }
 
@@ -122,14 +134,15 @@ export function useNotificationsApp(reseau: Reseau | null, profil: Profil | null
   const [commentaires, setCommentaires] = useState<NotificationApp[] | null>(null)
   const jour = reseau?.jour
   const franchise = profil?.role === 'franchise'
+  const monNom = reseau ? monNomPorteur(reseau, profil) : ''
   const sesMagasins = franchise && reseau ? reseau.magasins.filter((m) => !m.fermeture || m.fermeture.date > reseau.jour).map((m) => m.nom).join('|') : ''
   useEffect(() => {
     if (!actif || !jour) return
     let vivant = true
-    void Promise.all([commentairesRecents(ilYA(jour, JOURS), profil?.id), sesMagasins ? rappelsClotureFranchise(jour, sesMagasins.split('|')) : Promise.resolve([])])
+    void Promise.all([commentairesRecents(ilYA(jour, JOURS), profil?.id, monNom), sesMagasins ? rappelsClotureFranchise(jour, sesMagasins.split('|')) : Promise.resolve([])])
       .then(([c, r]) => vivant && setCommentaires([...c, ...r]))
     return () => { vivant = false }
-  }, [actif, jour, profil?.id, sesMagasins])
+  }, [actif, jour, profil?.id, sesMagasins, monNom])
   const toutes = useMemo(() => (reseau && actif ? [...(commentaires ?? []), ...notificationsDuReseau(reseau, profil)] : [])
     .sort((a, b) => b.quand.localeCompare(a.quand) || a.id.localeCompare(b.id)), [reseau, profil, actif, commentaires])
   // Première fois sur cet appareil : ce qui existe déjà n'est pas signalé comme nouveau

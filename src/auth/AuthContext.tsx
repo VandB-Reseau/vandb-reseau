@@ -15,7 +15,7 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
-interface Acces { role?: string; coach?: string | null; rr?: string | null; franchise?: string | null; magasins?: string[] | null }
+interface Acces { role?: string; coach?: string | null; rr?: string | null; direction?: string | null; franchise?: string | null; magasins?: string[] | null }
 
 // Rôle et périmètre du compte. Ils sont lus dans la base (fonction mon_acces) : le jeton de connexion
 // peut dater d'une heure. Sans cette fonction (script pas encore passé), on lit app_metadata,
@@ -28,6 +28,8 @@ function profilDepuis(session: Session | null, acces: Acces | null): Profil | nu
   if (meta.role === 'coach' && meta.coach) return { ...base, role: 'coach', perimetre: { coachs: [meta.coach] } }
   if (meta.role === 'rr' && meta.rr) return { ...base, role: 'rr', perimetre: { rr: [meta.rr] } }
   if (meta.role === 'franchise' && acces?.franchise) return { ...base, role: 'franchise', perimetre: { franchise: acces.franchise, magasins: acces.magasins ?? [] } }
+  // Direction (0054) : rôle lu dans la base seulement, tout le réseau en lecture
+  if (acces?.role === 'direction') return { ...base, nom: acces.direction?.trim() || base.nom, role: 'direction', perimetre: {} }
   if (acces && acces.role !== 'directeur' && acces.role !== 'coach' && acces.role !== 'rr') return { ...base, role: 'aucun', perimetre: {} }
   return { ...base, role: 'directeur', perimetre: {} }
 }

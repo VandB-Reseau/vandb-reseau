@@ -42,11 +42,11 @@ test('fiche magasin : tous les onglets, sur téléphone dans une bande qui défi
   const onglets = page.getByRole('tablist', { name: 'Rubriques de Brest Test' })
   if (!isMobile) {
     // Refonte (Joseph, 09/11/2026, 3A) ; Simulateurs à côté de Chiffres et Budget (Joseph, 14/11/2026)
-    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Équipements', 'Historique'])
+    await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', /^Carnet/, 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Équipements', 'Historique'])
     return
   }
   // Joseph (17/11/2026) : tous les onglets présents, la bande défile vers la droite, sans « Plus »
-  await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Équipements', 'Historique'])
+  await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', /^Carnet/, 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Équipements', 'Historique'])
   for (const t of await onglets.getByRole('tab').all()) expect((await t.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(await textesTropPetits(page)).toEqual([])

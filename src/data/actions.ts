@@ -150,5 +150,6 @@ export function monNomPorteur(reseau: Reseau, profil: Profil | null): string {
   if (profil.role === 'coach') return profil.perimetre.coachs?.[0] ?? ''
   if (profil.role === 'rr') return reseau.rrs.find((r) => r.id === profil.perimetre.rr?.[0])?.nom ?? ''
   if (profil.role === 'directeur') return reseau.directeur.nom
+  if (profil.role === 'direction') return profil.nom
   return ''
 }

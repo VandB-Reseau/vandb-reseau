@@ -15,17 +15,17 @@ test.afterEach(async ({ page }) => {
 const DIRECTEUR = 'Dominique DIRECTION'
 const sansDebordement = (l: Locator) => l.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
-test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne pratique, événement', async ({ page, isMobile }, info) => {
+test('le bouton Créer ouvre sous lui un menu : visite, note, tâche, photo, événement', async ({ page, isMobile }, info) => {
   // Refonte (Joseph, 09/11/2026, 9A) : sur PC, plus de bouton Créer ; Ctrl K et le bouton de chaque page (tests/refonte-saas.spec.ts)
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
-  // Téléphone : « + » dans l'en-tête, la barre du bas garde cinq onglets (Joseph, 21/10/2026)
+  // Téléphone : « + » dans l'en-tête ; la barre du bas a quatre onglets depuis le retrait des Messages (24/11/2026)
   const creer = page.locator('.MuiFab-root[aria-label="Ajouter"]')
-  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
+  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
   const bouton = (await creer.boundingBox())!
   await creer.click()
   const d = page.getByRole('menu', { name: 'Ajouter', exact: true })
-  await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Appel', 'Note', 'Tâche', 'Photo', 'Message', 'Événement'])
+  await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Appel', 'Note', 'Tâche', 'Photo', 'Événement'])
   // Menu déroulant collé au bouton, pas de fenêtre au centre (Joseph, 22/10/2026) ; vague 8 (110A) : le « + » flotte
   // en bas, le menu s'ouvre au-dessus de lui
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -41,8 +41,8 @@ test('le bouton Créer ouvre sous lui un menu : visite, tâche, message, bonne p
   await expect(page.getByRole('dialog', { name: 'Ajouter une tâche' })).toBeVisible()
   await page.getByRole('dialog', { name: 'Ajouter une tâche' }).getByRole('button', { name: 'Annuler' }).click()
   await creer.click()
-  await page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem', { name: 'Message' }).click()
-  await expect(page).toHaveURL(/#\/echanges/)
+  await page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem', { name: 'Note' }).click()
+  await expect(page.getByRole('dialog', { name: 'Nouvelle note' })).toBeVisible()
 })
 
 test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur sa vue d’ensemble', async ({ page, isMobile }, info) => {

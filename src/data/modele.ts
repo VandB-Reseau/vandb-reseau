@@ -233,7 +233,14 @@ export const visiteFaite = (v: Visite, jour: string) => v.date <= jour && !v.pre
 // visite / appreciation (Joseph 10/11/2026) : remarque interne prise pendant une visite, avec une appréciation ;
 // comme tout le journal, jamais renvoyée au franchisé (espace_franchise() ne lit pas la rubrique « notes »)
 export type Appreciation = 'satisfaisante' | 'mitigee' | 'preoccupante'
-export interface NoteMagasin { id: string; date: string; texte: string; par: string; visite?: number; appreciation?: Appreciation }
+// Carnet du magasin (Joseph, 24/11/2026) : notes en off de l'équipe, jamais lues par le franchisé (rubrique « notes » de
+// suivi_magasins). Ton et thèmes, collègues prévenus (noms), réponses en dessous, « Clore » quand l'alerte est traitée.
+export type TonNote = 'alerte' | 'surveiller' | 'positif' | 'info'
+export interface ReponseNote { id: string; quand: string; texte: string; par: string; mentions?: string[] }
+export interface NoteMagasin {
+  id: string; date: string; texte: string; par: string; visite?: number; appreciation?: Appreciation
+  ton?: TonNote; themes?: string[]; mentions?: string[]; quand?: string; reponses?: ReponseNote[]; close?: { par: string; quand: string }
+}
 // Vague 7 (81A) : sujets cochés de l'ordre du jour (identifiants de sujetsProposes) et sujets libres
 export interface PreparationVisite { notes: string; heure: string; par: string; maj: string; sujets?: string[]; libres?: string[] }
 

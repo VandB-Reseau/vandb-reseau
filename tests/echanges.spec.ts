@@ -108,12 +108,12 @@ test('le Directeur crée un groupe libre et y écrit', async ({ page }) => {
   expect(ecritures.find((e) => e.table === 'rpc/envoyer_fil')!.corps).toMatchObject({ p_fil: 'groupe:1', p_texte: 'Point visio lundi.' })
 })
 
-test('téléphone : barre du bas à cinq onglets, « + » dans l’en-tête', async ({ page }, info) => {
+test('téléphone : barre du bas à quatre onglets (messagerie retirée le 24/11/2026), « + » dans l’en-tête', async ({ page }, info) => {
   test.skip(info.project.name !== 'telephone', 'barre du bas : téléphone seulement')
   await seConnecter(page, { messagerie: {} })
   await page.goto('./#/')
   const barre = barreBasse(page)
-  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
+  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
   for (const l of await barre.getByRole('button').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   const plus = page.locator('.MuiFab-root[aria-label="Ajouter"]')
   expect((await plus.boundingBox())!.height).toBeGreaterThanOrEqual(48)
@@ -181,21 +181,6 @@ test('téléphone : dans une conversation longue, le nom reste en haut et la sai
   await champ.click()
   await verifier()
   await page.screenshot({ path: `captures/${info.project.name}-echanges-conversation-longue.png` })
-})
-
-test('Messages et Tâches sont deux onglets : on passe de l’un à l’autre depuis une conversation', async ({ page, isMobile }) => {
-  await seConnecter(page, { appMetadata: HUGO, messagerie: { messages: [msg(1, 'Annecy Test', 'Paul MULTI', 'franchise', 'La vitrine est installée.')] } })
-  await page.goto('./#/echanges/magasin/Annecy%20Test')
-  await expect(page.getByRole('list', { name: /^Messages de / })).toContainText('La vitrine est installée.')
-  // Téléphone : la conversation est en plein écran, sans barre du bas ; on revient à la liste
-  if (isMobile) await page.getByRole('button', { name: 'Messages' }).first().click()
-  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await nav.getByRole('button', { name: /^Tâches/ }).click()
-  await expect(page).toHaveURL(/#\/taches$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')
-  await expect(page.getByRole('list', { name: /^Messages de / })).toHaveCount(0)
-  await nav.getByRole('button', { name: /^Messages/ }).click()
-  await expect(page.getByRole('list', { name: 'Conversations' })).toBeVisible()
 })
 
 test('quitter un groupe : il disparaît de la liste', async ({ page }) => {

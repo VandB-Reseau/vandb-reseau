@@ -279,7 +279,7 @@ function EspaceDe({ bandeau }: { bandeau?: ReactNode }) {
   // Contrôle de gestion : compte sans rôle dans le réseau, désigné dans les paramètres des budgets
   if (profil.role === 'aucun') return <Suspense fallback={null}><SelonControleGestion sinon={<AccesFerme />} /></Suspense>
   if (franchise || vueApercu) return <MessagerieProvider><ReseauProvider key={apercu?.franchise ?? 'franchise'} charger={charger} lectureSeule cache={vueApercu ? undefined : `${profil.id}:franchise`}><RoutesFranchise apercu={vueApercu} /></ReseauProvider></MessagerieProvider>
-  return <MessagerieProvider><ReseauProvider key={cle ?? 'reseau'} accesFranchises={directeur} lectureSeule={!directeur} perimetre={perimetre} cache={`${profil.id}:reseau`}><Routes_ equipeSeule={!!perimetre} bandeau={bandeau} /></ReseauProvider></MessagerieProvider>
+  return <MessagerieProvider><ReseauProvider key={cle ?? 'reseau'} accesFranchises={directeur} lectureSeule={!directeur} perimetre={perimetre} cache={`${profil.id}:reseau`}><Routes_ equipeSeule={!!perimetre || profil.role === 'direction'} bandeau={bandeau} /></ReseauProvider></MessagerieProvider>
 }
 
 export default function App() {

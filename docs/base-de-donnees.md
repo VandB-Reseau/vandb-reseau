@@ -73,7 +73,7 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 | --- | --- | --- |
 | `sante` | Notes nine box datées | `sante_parc` |
 | `sante_sauvegarde` | Copie avant « Effacer toutes les notes » | `sante_parc_sauvegarde` |
-| `notes` | Journal du magasin | `notes_magasins` |
+| `notes` | Carnet du magasin (24/11/2026) : notes « en off » de l'équipe, jamais renvoyées au franchisé. Champs JSON sans migration de structure : `ton` (`alerte`, `surveiller`, `positif`, `info`), `themes`, `mentions` (collègues prévenus, cloche de l'app), `quand` (instant), `reponses` (`[{ id, quand, texte, par, mentions }]`), `close` (`{ par, quand }`) | `notes_magasins` |
 | `audits` | Résultats consolidés des audits | `audits` |
 | `associes` | Associés et mandats | `associes` |
 | `actions` | Tâches hors visite ; `fil` = `equipe` pour une tâche née dans « Équipe seule », jamais renvoyée au franchisé (0019) ; `budget` = tâche née du plan d'action du budget (type d'alerte, année, responsable, valeur de départ, `abandonnee`, `origine` = numéro de l'ancienne action reprise par 0039) ; `exterieur` = `{ cible, nom }` pour une tâche du plan marché extérieur (0049), seule tâche que le franchisé modifie ou supprime, par `tache_exterieur_franchise` | `actions` |
@@ -275,7 +275,8 @@ Toutes en `SECURITY DEFINER`, appelables par les seuls comptes connectés, et re
 | Historique des modifications | `historique_modifications(p_depuis, p_limite)` (Directeur, 90 jours par défaut, sans l'identifiant du compte) ; `remettre_modification(p_id)` (Directeur, une suppression, si rien n'a pris sa place) ; `noter_modification` (déclencheur) | 0036 |
 | Campagnes régionales | `campagne_region_permise` | 0005 |
 | Fichiers | `photo_visible`, `piece_visible` (fichiers d'une tâche de l'équipe seule refusés au franchisé, 0019) | 0004, 0009, 0019 |
-| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une`, `notifications_animation`, `notifications_budget`, `comptes_concernes` (fonction « notifier » seule) | 0016, 0024, 0030, 0039 |
+| Notifications | `abonner_appareil`, `desabonner_appareil` (compte connecté) ; `comptes_de_cle`, `notifications_a_envoyer`, `notifications_tache`, `notifications_une`, `notifications_animation`, `notifications_budget` (un commentaire « équipe seule » du budget ne part jamais au franchisé, 0053), `comptes_concernes` (fonction « notifier » seule) | 0016, 0024, 0030, 0039, 0053 |
+| Accès Direction (0054) | `est_direction`, `lecteur_reseau`, `lecteur_equipe` ; `ouvrir_acces_direction(p_email, p_nom)`, `couper_acces_direction(p_user)`, `liste_acces_direction()` (Directeur seul). Rôle `direction` (nom dans la clé `direction` d'`app_metadata`) : règle `direction_lecture` (lecture seule) sur les tables de l'équipe, écriture dans `suivi_magasins` rubrique `notes` seulement (`direction_carnet_ajout`, `direction_carnet_modification`), ses `preferences` ; fonctions de lecture de l'équipe réécrites pour l'admettre. Ni messagerie privée, ni accès des franchisés, ni appareils abonnés | 0054 |
 | Chiffres mensuels | `couverture_caisse()` (Directeur et éditeur SQL : mois saisis couverts ou non par la caisse, 0040) ; `chiffres_mensuels()` (équipe : ses magasins, tous pour le Directeur ; rien pour les autres comptes) ; `chiffres_mensuels_internes` (interne : repères, challenges, espace du franchisé). La caisse passe devant la saisie, mois par mois | 0039 |
 | Outil | `json_sur` (lit un texte JSON sans jamais échouer) | 0004 |
 

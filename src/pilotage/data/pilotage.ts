@@ -773,12 +773,17 @@ export interface Commentaire {
   id: number; ancre: string; ancreLibelle: string | null; parent: number | null; texte: string
   auteur: string | null; auteurRole: Role | null; auteurNom: string | null; creeLe: string
   resoluLe: string | null; resoluParRole: Role | null; resoluParNom: string | null
+  // Migration pilotage 0037 (Joseph, 24/11/2026) : lu par l'équipe seule, collègues prévenus
+  equipe: boolean; mentions: string[]
 }
+const COLONNES_COMMENTAIRE = 'id, ancre, ancre_libelle, parent, texte, auteur, auteur_role, auteur_nom, cree_le, resolu_le, resolu_par_role, resolu_par_nom'
 export async function chargerCommentaires(magasin: string, annee: number): Promise<Commentaire[]> {
-  const complet = await pilotage().from('echanges_budget').select('id, ancre, ancre_libelle, parent, texte, auteur, auteur_role, auteur_nom, cree_le, resolu_le, resolu_par_role, resolu_par_nom')
-    .eq('store_name', magasin).eq('annee', annee).order('cree_le')
-  type Brut = { id: number; ancre?: string; ancre_libelle?: string | null; parent?: number | null; texte: string; auteur: string | null; auteur_role: Role | null; auteur_nom: string | null; cree_le: string; resolu_le?: string | null; resolu_par_role?: Role | null; resolu_par_nom?: string | null }
-  let lignes = complet.data as Brut[] | null
+  const lire = (colonnes: string) => pilotage().from('echanges_budget').select(colonnes).eq('store_name', magasin).eq('annee', annee).order('cree_le')
+  // Sans 0037, sans 0025 : on relit avec moins de colonnes
+  let complet = await lire(`${COLONNES_COMMENTAIRE}, equipe, mentions`)
+  if (complet.error) complet = await lire(COLONNES_COMMENTAIRE)
+  type Brut = { id: number; ancre?: string; ancre_libelle?: string | null; parent?: number | null; texte: string; auteur: string | null; auteur_role: Role | null; auteur_nom: string | null; cree_le: string; resolu_le?: string | null; resolu_par_role?: Role | null; resolu_par_nom?: string | null; equipe?: boolean; mentions?: string[] | null }
+  let lignes = complet.data as unknown as Brut[] | null
   if (complet.error) {
     const ancien = await pilotage().from('echanges_budget').select('id, texte, auteur, auteur_role, auteur_nom, cree_le').eq('store_name', magasin).eq('annee', annee).order('cree_le')
     if (ancien.error) throw new ErreurChargement()
@@ -787,6 +792,7 @@ export async function chargerCommentaires(magasin: string, annee: number): Promi
   return (lignes ?? []).map((x) => ({
     id: x.id, ancre: x.ancre ?? 'budget', ancreLibelle: x.ancre_libelle ?? null, parent: x.parent ?? null, texte: x.texte, auteur: x.auteur,
     auteurRole: x.auteur_role, auteurNom: x.auteur_nom, creeLe: x.cree_le, resoluLe: x.resolu_le ?? null, resoluParRole: x.resolu_par_role ?? null, resoluParNom: x.resolu_par_nom ?? null,
+    equipe: x.equipe === true, mentions: Array.isArray(x.mentions) ? x.mentions : [],
   }))
 }
 // Commentaires encore ouverts par magasin, pour la campagne ; sans la migration 0025, aucun
@@ -797,14 +803,17 @@ export async function chargerCommentairesOuverts(annee: number): Promise<Record<
   for (const x of data as { store_name: string }[]) n[x.store_name] = (n[x.store_name] ?? 0) + 1
   return n
 }
-export async function envoyerCommentaire(magasin: string, annee: number, c: { ancre: string; libelle: string; texte: string; parent?: number }) {
+export async function envoyerCommentaire(magasin: string, annee: number, c: { ancre: string; libelle: string; texte: string; parent?: number; equipe?: boolean; mentions?: string[] }) {
   const r = await pilotage().from('echanges_budget').insert({
     store_name: magasin, annee, texte: c.texte.trim(), ...(c.parent ? { parent: c.parent } : { ancre: c.ancre, ancre_libelle: c.libelle.slice(0, 160) }),
+    // Colonnes de 0037 envoyées seulement quand elles servent : un commentaire ordinaire s'écrit aussi sans la migration
+    ...(c.equipe && !c.parent ? { equipe: true } : {}), ...(c.mentions?.length ? { mentions: c.mentions.slice(0, 10) } : {}),
   }).select('id')
   verifier(r)
-  // Notification sur le téléphone des autres comptes du magasin (fusion, Joseph 03/11/2026, décision 4)
+  // Notification sur le téléphone des autres comptes du magasin (fusion, Joseph 03/11/2026, décision 4). Un commentaire de
+  // l'équipe seule (ou une réponse à l'un d'eux) ne part pas sur les téléphones : il arrive dans la cloche de l'équipe.
   const id = Number((r.data as { id?: unknown }[] | null)?.[0]?.id)
-  if (Number.isInteger(id) && id > 0) notifier('budget', [id])
+  if (Number.isInteger(id) && id > 0 && !c.equipe) notifier('budget', [id])
 }
 export async function resoudreCommentaire(id: number, resolu: boolean) {
   verifier(await pilotage().rpc('resoudre_commentaire', { p_id: id, p_resolu: resolu }))

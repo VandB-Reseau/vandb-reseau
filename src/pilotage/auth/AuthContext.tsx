@@ -45,7 +45,9 @@ export function PilotageAuthProvider({ children }: { children: ReactNode }) {
     // « Voir comme » : le rôle de la personne vue, sans les droits propres du Directeur (paramètres, contrôle de gestion)
     profil: !profil || !pret ? null
       : apercu ? { id: profil.id, email: profil.email, nom: apercu.franchise, role: 'franchise', apercu: true }
-      : equipe ? { id: profil.id, email: profil.email, nom: profil.nom, role: profil.role, apercu: true }
+      : equipe ? { id: profil.id, email: profil.email, nom: profil.nom, role: profil.role === 'direction' ? 'directeur' : profil.role, apercu: true }
+      // Direction (0038) : les budgets de tout le réseau, comme le Directeur, en lecture seule
+      : profil.role === 'direction' ? { id: profil.id, email: profil.email, nom: profil.nom, role: 'directeur', apercu: true }
       : { id: profil.id, email: profil.email, nom: profil.nom, role: profil.role, parametreur: droits!.parametreur, controleGestion: droits!.controleGestion },
   }
   return <Ctx.Provider value={valeur}>{children}</Ctx.Provider>

@@ -335,7 +335,8 @@ export function AppShell({ children, franchise, bandeau, sansParametres = false,
   const sansBarre = surPC || saisie || conversation
   // 306 : Tâches a déjà son bouton « Ajouter une tâche » en tête, pas de second « + » flottant (les autres pages gardent le « + », seul moyen de créer sur téléphone)
   const pageQuiCree = /^\/taches$/.test(pathname)
-  const flottant = !surPC && !franchise && !saisie && !conversation && !pageQuiCree && !/^\/magasins\/[^/]+/.test(pathname)
+  // Direction (0054) : lecture seule, pas de « + » (le carnet garde sa saisie)
+  const flottant = !surPC && !franchise && profil?.role !== 'direction' && !saisie && !conversation && !pageQuiCree && !/^\/magasins\/[^/]+/.test(pathname)
 
   return (
     <CreerProvider>

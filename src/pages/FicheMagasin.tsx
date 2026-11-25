@@ -6,6 +6,9 @@ import { DialogPratique } from '../components/BonnesPratiques'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import { OngletBudget } from '../components/OngletBudget'
+import { Carnet } from '../components/Carnet'
+import LockOutlined from '@mui/icons-material/LockOutlined'
+import { ouverte as noteOuverte } from '../data/carnet'
 import { GroupeBudgetaire } from '../components/GroupeBudgetaire'
 import StarOutlined from '@mui/icons-material/StarOutlined'
 import ReviewsOutlined from '@mui/icons-material/ReviewsOutlined'
@@ -116,10 +119,12 @@ const lienAvisGoogle = (nom: string) => `https://www.google.com/search?q=${encod
 // visites et journal ; Chiffres regroupe le suivi face au budget, la santé, les leviers et les saisies (une seule source,
 // la caisse) ; Budget ne garde que les étapes du budget. Les bonnes pratiques sont dans l'Activité (Joseph, 14/11/2026 :
 // plus d'onglet « Ressources » ; anciens liens « ?vue=pratiques » ouverts sur le filtre Bonnes pratiques).
-type VueFiche = 'fiche' | 'activite' | 'taches' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'pratiques' | 'equipements'
-type OngletFiche = 'fiche' | 'activite' | 'taches' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'equipements'
+type VueFiche = 'fiche' | 'carnet' | 'activite' | 'taches' | 'actions' | 'visites' | 'journal' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'pratiques' | 'equipements'
+type OngletFiche = 'fiche' | 'carnet' | 'activite' | 'taches' | 'chiffres' | 'ninebox' | 'budget' | 'simulateurs' | 'exterieur' | 'equipements'
 const rubriquesFiche: Rubrique<OngletFiche>[] = [
   { vue: 'fiche', libelle: 'Vue d’ensemble', icone: <StorefrontOutlined /> },
+  // Joseph (24/11/2026, proposition A) : le carnet de l'équipe, notes en off et comptes rendus, jamais lu par le franchisé
+  { vue: 'carnet', libelle: 'Carnet', icone: <LockOutlined /> },
   // Joseph (17/11/2026) : les tâches du magasin retrouvent leur onglet (filtres, ajout, campagnes)
   { vue: 'taches', libelle: 'Tâches', icone: <TaskAltOutlined /> },
   { vue: 'chiffres', libelle: 'Chiffres', icone: <QueryStatsOutlined /> },
@@ -139,7 +144,7 @@ const rubriquesFiche: Rubrique<OngletFiche>[] = [
 // Vague 3 (23A) : plus de sous-onglets dans Activité ; les anciennes adresses (actions, visites, journal) ouvrent le fil
 // sur le bon filtre
 const ongletDe = (v: VueFiche): OngletFiche => (v === 'actions' ? 'taches' : v === 'visites' || v === 'journal' || v === 'activite' || v === 'pratiques' ? 'activite' : v)
-const VUES: VueFiche[] = ['fiche', 'activite', 'taches', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'simulateurs', 'exterieur', 'pratiques', 'equipements']
+const VUES: VueFiche[] = ['fiche', 'carnet', 'activite', 'taches', 'actions', 'visites', 'journal', 'chiffres', 'ninebox', 'budget', 'simulateurs', 'exterieur', 'pratiques', 'equipements']
 // Anciens liens vers un onglet regroupé : l'onglet qui l'accueille, ouvert sur sa partie
 const anciennesVues: Record<string, VueFiche> = { sante: 'ninebox', campagnes: 'actions', fil: 'journal' }
 const filtreActivite = (v: VueFiche, fil: string | null): FiltreActivite =>
@@ -180,7 +185,9 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
     return () => window.clearInterval(minuterie)
   }, [])
   // Joseph (17/11/2026) : tous les onglets présents sur téléphone aussi, la bande défile vers la droite
-  const rubriques = rubriquesFiche
+  // Le nombre de notes à clore (alertes, points à surveiller) se lit sur l'onglet du carnet
+  const aClore = (reseau.notesMagasins[m.nom] ?? []).filter(noteOuverte).length
+  const rubriques = useMemo(() => rubriquesFiche.map((r) => (r.vue === 'carnet' && aClore ? { ...r, pastille: aClore } : r)), [aClore])
   // Choix 203 (Joseph, 15/11/2026) : sans onglet demandé, la fiche rouvre le dernier onglet (et filtre) de la personne.
   // Une seule fois par magasin ouvert : rejouée à chaque changement d'adresse, elle ramenait sans cesse l'onglet retenu
   // (fiche bloquée sur Simuler, Joseph 15/11/2026).
@@ -300,6 +307,8 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
           <ActiviteMagasin reseau={reseau} m={m} filtre={filtreActivite(vue, params.get('fil'))} filtrer={(f) => setParams((p) => { retenirFil(f);  const n = new URLSearchParams(p); n.set('vue', 'activite'); if (f === 'tout') n.delete('fil'); else n.set('fil', f); return n }, { replace: true })}
             signaler={setConfirmation} saisirVisite={saisirVisite} modifierVisite={setVisite} />
         )}
+
+        {vue === 'carnet' && <Carnet key={m.nom} reseau={reseau} m={m} />}
 
         {ongletDe(vue) === 'taches' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>

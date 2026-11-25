@@ -2,13 +2,12 @@ import { expect, test } from '@playwright/test'
 import { deplierGroupes, deplierPoint, COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
 // Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long. Refonte vague 4 (Joseph, 10/11/2026,
-// 36A) : Accueil, Agenda, Magasins, Tâches, Messages dans la barre du bas ; Visites et Santé passent dans le menu du compte
+// 36A) : Accueil, Agenda, Magasins, Tâches dans la barre du bas (Messages retiré le 24/11/2026) ; Visites et Santé passent dans le menu du compte
 const principales = [
   { nom: 'Accueil', court: 'Accueil' },
   { nom: 'Agenda', court: 'Agenda' },
   { nom: 'Magasins', court: 'Magasins' },
   { nom: 'Visites', court: '' },
-  { nom: 'Messages', court: 'Messages' },
   { nom: 'Tâches', court: 'Tâches' },
   { nom: 'Santé du parc', court: '' },
 ]
@@ -121,9 +120,8 @@ test('zones tactiles d’au moins 48 px sur téléphone', async ({ page, isMobil
   test.skip(!isMobile, 'téléphone uniquement')
   await seConnecter(page)
   const boutons = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')
-  await expect(boutons).toHaveCount(5)
+  await expect(boutons).toHaveCount(4)
   await expect(boutons.nth(3)).toHaveAccessibleName(/^Tâches/)
-  await expect(boutons.nth(4)).toHaveAccessibleName(/^Messages/)
   const creer = (await page.locator('.MuiFab-root[aria-label="Ajouter"]').boundingBox())!
   expect(creer.height).toBeGreaterThanOrEqual(48)
   for (const b of await boutons.all()) {
