@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Pilotage et Réseau réunis dans ce dépôt, documentation pour un développeur (Joseph, 25/11/2026). **Sans migration à
+  passer** : les 38 migrations du schéma `pilotage` sont rangées à l'identique dans `supabase/migrations/pilotage/`
+  (historique figé), et toute nouvelle migration prend le numéro suivant de la série unique (prochaine libre 0055).
+  `npm run test:base` contrôle les deux séries, seules puis ensemble. Nouveaux documents : `docs/regles-metier.md`,
+  `docs/deploiement.md`, `docs/tests-et-ci.md`, `docs/base-pilotage.md`, `docs/import-caisse.md` ; README refait ;
+  modèle de description des demandes de fusion.
 - Accès « Direction » en lecture (Joseph, 24/11/2026, lot 2 après le carnet). **Base : réseau 0054
   (`0054_acces_direction.sql`) et pilotage 0038 (`0038_acces_direction.sql`, dépôt du pilotage), dans l'ordre qu'on veut,
   après 0053.** Un DG ou un autre accès donné par le Directeur (Équipe › Organisation › « Accès Direction ») lit tout le
