@@ -21,6 +21,13 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   mentions, réponses et nouvelles alertes (RR, Directeur) dans la cloche. Budget : commentaires dans la marge à côté de
   leur ligne sur PC, volet sur téléphone ; « Équipe seule » par défaut, sans notification au franchisé ; mentions dans
   la cloche. Messagerie retirée des menus (ses adresses restent).
+- Fiche d'un Coach ou d'un RR plus visuelle (Joseph, 24/11/2026, choix 413 à 420), sans migration. Vue d'ensemble : phrase
+  de lecture, portefeuille en cartes chiffrées avec l'écart au réseau ou à la région en flèche, répartition des magasins
+  en 4 tons, jauge du rythme de visite de l'année avec le trait « à date ». Magasins (PC) : tableau en couleurs, médiane de
+  ses magasins en première ligne, écart face à la médiane, interrupteur « Couleurs » ; Coachs d'un RR avec deux jauges
+  (charge, rythme de visite). Activité du Coach : cartes des tâches et avancement de l'année, visites des 12 derniers mois
+  par type (un clic limite la liste au mois), magasins pas vus avec la barre du retard. Revue du mois du RR : cartes en
+  couleur et jauge par Coach. Les calculs des deux fiches ne se refont plus à chaque affichage.
 - Simulateurs, point mort (Joseph, 24/11/2026 : « le point mort est marqué à 0 € »), sans migration. Le trait pointillé
   du compte marque 0 € (gain à droite, perte à gauche) ; le point mort en fûts est écrit sous le compte dans Prix du fût
   d'un gros marché et Contrat extérieur. Plus de trait dans Coût de la formation et Consignes, sans gain possible.

@@ -1,4 +1,4 @@
-import { brand, rayon } from '../theme/theme'
+import { rayon } from '../theme/theme'
 import { BarreRepartition, BarresEmpilees, CarteGraphe } from '../components/Graphes'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from '../components/TableauTri'
 import { Blason } from '../components/Blason'
@@ -58,7 +58,7 @@ import { VueCampagnes } from '../components/Campagnes'
 import { FiltreMenu, type Option } from '../components/FiltreMenu'
 import InputAdornment from '@mui/material/InputAdornment'
 import SearchIcon from '@mui/icons-material/Search'
-import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, useSaisieSante, type Saisie } from '../components/Sante'
+import { BoutonsNote, BoutonsOption, LibelleCritere, NotesParAxe, PastilleCase, couleursCoachs, texteSur, tonParcDe, tonsParc, useSaisieSante, type Saisie } from '../components/Sante'
 import { EN_DIRECT, coachA, libelleSuivi, suivi } from '../data/charge'
 import { avancement, caseDe, historiqueSante, effetDeploiement, EFFET_MINIMUM, EFFET_MOIS, couleurTon, criteresAxe, libelleAxe, libelleNote, nineBox, tonDe, tousCriteres, type Evaluation, type IdCritere, type Thematique } from '../data/sante'
 import { useAuth } from '../auth/AuthContext'
@@ -127,13 +127,6 @@ export function nomCourtCoach(nom: string, tous: string[] = []): string {
 
 // 408 (Joseph, 24/11/2026) : la répartition du parc en 4 tons (Agir, Surveiller, Bon, Neutre) et son évolution sur
 // 6 mois, lue dans l'historique des classements : combien de magasins passent du rouge au vert
-const tonsParc = [
-  { libelle: 'Prioritaires', couleur: brand.brique, ids: SURVEILLER },
-  { libelle: 'À suivre', couleur: brand.or, ids: null },
-  { libelle: 'Solides', couleur: brand.vertFonce, ids: SOLIDES },
-  { libelle: 'Non classés', couleur: '#9a948d', ids: [] as string[] },
-]
-const tonParcDe = (caseId: string | null | undefined) => (!caseId ? 3 : SURVEILLER.includes(caseId) ? 0 : SOLIDES.includes(caseId) ? 2 : 1)
 function RepartitionParc({ reseau, magasins }: { reseau: Reseau; magasins: Magasin[] }) {
   // Les mêmes magasins que les cartes du dessus (filtres compris)
   const ouverts = magasins

@@ -1,4 +1,4 @@
-import { LigneVide, Section } from './Section'
+import { LigneVide } from './Section'
 import { Entete, LigneSansResultat, useTableau, type ColonneTri } from './TableauTri'
 import { useMemo, type ReactNode } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
@@ -21,6 +21,8 @@ import CallOutlined from '@mui/icons-material/CallOutlined'
 import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import { Bulle } from './Outils'
+import { Indicateur, grilleIndicateurs } from './Indicateur'
+import { styleIntertitre } from '../theme/theme'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, Pastille, TitreSection, useAffichage, type Ton } from './Social'
 import { useAuth } from '../auth/AuthContext'
 import { formatPourcent } from '../data/chiffres'
@@ -155,27 +157,26 @@ const couleurTon = { mieux: 'success.main', moins: 'error.main', egal: undefined
 
 export function BlocPortefeuille({ reseau, p }: { reseau: Reseau; p: Portefeuille }) {
   const ref = useReference(reseau)
+  // 413 (Joseph, 24/11/2026) : le portefeuille en cartes chiffrées, l'écart au réseau (ou à la région) en flèche colorée
   return (
-    // 316 (18/11/2026) : une carte titrée comme les blocs de droite de la fiche
-    <Section titre={ref ? `Portefeuille comparé ${ref.libelle === 'réseau' ? 'au réseau' : 'à la région'}` : 'Portefeuille'}
-      action={<Typography variant="body2" color="text.secondary">{p.magasins} magasin{p.magasins > 1 ? 's' : ''}</Typography>}>
-      <Box component="section" aria-label="Portefeuille" sx={{ mx: { xs: -2, md: -3 }, '& > * + *': { borderTop: '1px solid', borderColor: 'divider' } }}>
+    <Box component="section" aria-label="Portefeuille">
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 1 }}>
+        <Typography component="h2" sx={{ ...styleIntertitre, mb: 0, flex: 1 }}>{ref ? `Portefeuille comparé ${ref.libelle === 'réseau' ? 'au réseau' : 'à la région'}` : 'Portefeuille'}</Typography>
+        <Typography variant="body2" color="text.secondary">{p.magasins} magasin{p.magasins > 1 ? 's' : ''}</Typography>
+      </Box>
+      <Box sx={{ ...grilleIndicateurs, gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' } }}>
         {indicateurs.map((i) => {
           const v = i.valeur(p), r = ref ? i.valeur(ref.p) : null
-          const ton = tonEcart(v, r, i.sens, i.seuil)
+          const t = tonEcart(v, r, i.sens, i.seuil)
+          const d = v !== null && r !== null ? v - r : null
           return (
-            <LigneCompacte key={i.id} titre={i.libelle}
-              detail={[i.detail(p), ref && r !== null && `${ref.libelle} ${i.id === 'ca' ? formatPourcent(r) : pct(r)}`].filter(Boolean).join(' · ')}
-              fin={
-                <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-                  <Typography sx={{ fontWeight: 700, fontSize: '1.125rem', color: ton ? couleurTon[ton] : undefined }}>{i.affiche(p)}</Typography>
-                  {ton && ton !== 'egal' && v !== null && r !== null && <Typography variant="caption" sx={{ display: 'block', fontWeight: 600, color: couleurTon[ton] }}>{i.ecart(v - r)}</Typography>}
-                </Box>
-              } />
+            <Indicateur key={i.id} libelle={i.libelle} valeur={i.affiche(p)} couleur={t ? couleurTon[t] : undefined}
+              evolution={t && t !== 'egal' && d !== null ? { texte: i.ecart(d), sens: d > 0 ? 'hausse' : 'baisse', bon: t === 'mieux' } : null}
+              detail={[i.detail(p), ref && r !== null && `${ref.libelle} ${i.id === 'ca' ? formatPourcent(r) : pct(r)}`].filter(Boolean).join(' · ')} />
           )
         })}
       </Box>
-    </Section>
+    </Box>
   )
 }
 

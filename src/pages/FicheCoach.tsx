@@ -1,7 +1,7 @@
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useDroits } from '../auth/Droits'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Snackbar from '@mui/material/Snackbar'
 import { DialogCoach } from '../components/EditionEquipe'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -18,7 +18,6 @@ import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
 import { SectionFichePersonnelle } from './FichePersonne'
 import { SectionAccesEquipe } from '../components/AccesEquipe'
 import { libelleTypeVisite, visiteFaite, type Coach, type Reseau } from '../data/modele'
-import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
@@ -29,7 +28,7 @@ import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
 import { BoutonAjouterAction, ListeActions } from '../components/Actions'
 import { BilanCampagnes } from '../components/Campagnes'
 import { actionsDes, enRetard } from '../data/actions'
-import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, type LigneRythme } from '../data/visites'
+import { anneeDe, lienCompteRendu, suiviRythme, type LigneRythme } from '../data/visites'
 import ForumOutlined from '@mui/icons-material/ForumOutlined'
 import { OngletEntretiens } from '../components/Entretiens'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
@@ -39,6 +38,7 @@ import { lienPersonne } from '../data/messagerie'
 import { departDe, fichePersonne } from '../data/personnes'
 import { BoutonDepart } from '../components/DepartCollaborateur'
 import { FilAriane } from '../components/FilAriane'
+import { CartesTachesEquipe, EnsembleEquipe, GrapheVisitesEquipe, LignesPasVus, TableauMagasinsEquipe, libelleMoisAnnee } from '../components/FicheEquipe'
 
 // Vague 3 (Joseph, 09/11/2026, 28A) : fiche d'une personne au gabarit de la fiche magasin, trois onglets.
 // Les anciennes adresses (?vue=portefeuille|fiche|visites|actions|campagnes) mènent au bon onglet.
@@ -59,23 +59,28 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
   const changerVue = (v: VueCoach) => setParams((p) => { const n = new URLSearchParams(p); if (v === 'ensemble') n.delete('vue'); else n.set('vue', v); return n }, { replace: true })
   const [edition, setEdition] = useState(false)
   const [message, setMessage] = useState('')
-  const magasins = magasinsDuCoach(reseau, coach.nom)
-  const noms = new Set(magasins.map((m) => m.nom))
-  const charge = chargeA(reseau, coach.nom)
+  // Vitesse (comme #261) : chaque calcul ne se refait que si les données ou le Coach changent, pas à chaque affichage
+  const magasins = useMemo(() => magasinsDuCoach(reseau, coach.nom), [reseau, coach.nom])
+  const noms = useMemo(() => new Set(magasins.map((m) => m.nom)), [magasins])
+  const charge = useMemo(() => chargeA(reseau, coach.nom), [reseau, coach.nom])
   const a = anneeDe(reseau.jour)
-  const rythme = suiviRythme(reseau, a).filter((l) => noms.has(l.magasin.nom))
-  const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
-  const aVoir = rythme.filter((l) => l.alerte).sort((x, y) => ecart(y) - ecart(x))
-  const visites = reseau.visites.filter((v) => visiteFaite(v, reseau.jour) && (v.visiteurs.includes(coach.nom) || (noms.has(v.magasin) && !v.visiteurs.length)))
-    .sort((x, y) => y.date.localeCompare(x.date))
+  const rythme = useMemo(() => suiviRythme(reseau, anneeDe(reseau.jour)).filter((l) => noms.has(l.magasin.nom)), [reseau, noms])
+  const aVoir = useMemo(() => {
+    const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
+    return rythme.filter((l) => l.alerte).sort((x, y) => ecart(y) - ecart(x))
+  }, [rythme])
+  const visites = useMemo(() => reseau.visites.filter((v) => visiteFaite(v, reseau.jour) && (v.visiteurs.includes(coach.nom) || (noms.has(v.magasin) && !v.visiteurs.length)))
+    .sort((x, y) => y.date.localeCompare(x.date)), [reseau, coach.nom, noms])
   const [toutes, setToutes] = useState(false)
+  const [moisChoisi, setMoisChoisi] = useState<string | null>(null)
   const { referentiels } = useDroits()
   const depart = departDe(reseau, { type: 'coach', cle: coach.nom })
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const actions = actionsDes(reseau, noms)
-  const ouvertes = actions.filter((x) => !x.a.faite)
-  const retards = ouvertes.filter((x) => enRetard(x.a, reseau.jour)).length
-  const faitesAn = rythme.reduce((t, l) => t + l.faites, 0), referenceAn = rythme.reduce((t, l) => t + l.reference, 0)
+  const actions = useMemo(() => actionsDes(reseau, noms), [reseau, noms])
+  const retards = useMemo(() => actions.filter((x) => !x.a.faite && enRetard(x.a, reseau.jour)).length, [actions, reseau.jour])
+  const p = useMemo(() => portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme), [reseau, magasins, rythme])
+  const faitesAn = p.visitesFaites, referenceAn = p.visitesReference
+  const listees = useMemo(() => (moisChoisi ? visites.filter((v) => v.date.startsWith(moisChoisi)) : visites), [visites, moisChoisi])
   return (
     <>
       <FilAriane pcSeulement etapes={[{ libelle: 'Équipe', lien: '/equipe' }]} ici={coach.nom} />
@@ -93,7 +98,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
 
         {vue === 'ensemble' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, alignItems: 'start' }}>
-            <BlocPortefeuille reseau={reseau} p={portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme)} />
+            <EnsembleEquipe reseau={reseau} magasins={magasins} rythme={rythme} p={p} carte={<BlocPortefeuille reseau={reseau} p={p} />} />
             <Box sx={{ display: 'grid', gap: 2 }}>
               <Section titre="Rattachement">
                 <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
@@ -107,25 +112,20 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
 
         {vue === 'magasins' && (magasins.length === 0
           ? <LigneVide>Aucun magasin affecté aujourd’hui.</LigneVide>
-          : <ListeMagasins magasins={magasins} />)}
+          : surPC ? <TableauMagasinsEquipe reseau={reseau} magasins={magasins} rythme={rythme} actions={actions} /> : <ListeMagasins magasins={magasins} />)}
 
         {vue === 'activite' && <Box sx={{ display: 'grid', gap: 2 }}>
+          <CartesTachesEquipe reseau={reseau} actions={actions} />
           <Section titre="Tâches en cours de ses magasins" action={<BoutonAjouterAction reseau={reseau} magasins={[...noms].sort()} signaler={setMessage} />}><ListeActions reseau={reseau} actions={actions} avecMagasin signaler={setMessage} libelle={`Tâches en cours des magasins de ${coach.nom}`} magasins={[...noms]} /></Section>
+          {visites.length > 0 && <GrapheVisitesEquipe reseau={reseau} visites={visites} larges={surPC} moisChoisi={moisChoisi} choisir={setMoisChoisi} />}
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
             <Section titre="Pas vus depuis longtemps">
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{faitesAn} visite{faitesAn > 1 ? 's' : ''} en {a.court} · référence nine box {referenceAn}</Typography>
-              {aVoir.length === 0 ? <Typography variant="body2" color="text.secondary">Tous ses magasins ont été vus dans le délai de leur case.</Typography> : aVoir.map((l) => (
-                <Box key={l.magasin.nom} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Link component={RouterLink} to={lienFiche(l.magasin.nom)} sx={{ fontWeight: 500 }}>{l.magasin.nom}</Link>
-                    <Typography variant="body2" color="text.secondary">{[l.case?.libelle ?? 'Non classé', l.derniere ? `dernière visite le ${dateCourte(l.derniere.date)}` : null, l.dernierContact && `appel le ${dateCourte(l.dernierContact.date)}`].filter(Boolean).join(' · ')}</Typography>
-                  </Box>
-                  <Chip size="small" color="warning" label={libellePasVu(l)} sx={{ fontSize: 12, fontWeight: 600 }} />
-                </Box>
-              ))}
+              {aVoir.length === 0 ? <Typography variant="body2" color="text.secondary">Tous ses magasins ont été vus dans le délai de leur case.</Typography> : <LignesPasVus lignes={aVoir} />}
             </Section>
-            <Section titre="Dernières visites">
-              {visites.length === 0 ? <LigneVide>Aucune visite enregistrée.</LigneVide> : (toutes ? visites : visites.slice(0, 12)).map((v) => (
+            <Section titre="Dernières visites" action={moisChoisi ? <Button onClick={() => setMoisChoisi(null)} sx={{ minHeight: 48 }}>Tous les mois</Button> : undefined}>
+              {moisChoisi && <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>{`${listees.length} visite${listees.length > 1 ? 's' : ''} en ${libelleMoisAnnee(moisChoisi)}`}</Typography>}
+              {listees.length === 0 ? <LigneVide>{moisChoisi ? 'Aucune visite ce mois-là.' : 'Aucune visite enregistrée.'}</LigneVide> : (toutes ? listees : listees.slice(0, 12)).map((v) => (
                 <Box key={v.id ?? `${v.magasin}-${v.date}`} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
                   <Typography variant="body2" color="text.secondary" sx={{ width: 100, flexShrink: 0 }}>{dateCourte(v.date)}</Typography>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -135,7 +135,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
                   <Tooltip title="Compte rendu PDF"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu de ${v.magasin} du ${dateCourte(v.date)}`}><PictureAsPdfOutlined /></IconButton></Tooltip>
                 </Box>
               ))}
-              {visites.length > 12 && <Button onClick={() => setToutes((x) => !x)} sx={{ minHeight: 48, mt: 0.5 }}>{toutes ? 'Afficher moins' : `Voir les ${visites.length} visites`}</Button>}
+              {listees.length > 12 && <Button onClick={() => setToutes((x) => !x)} sx={{ minHeight: 48, mt: 0.5 }}>{toutes ? 'Afficher moins' : `Voir les ${listees.length} visites`}</Button>}
             </Section>
           </Box>
           <Section titre="Campagnes"><BilanCampagnes reseau={reseau} magasins={magasins} /></Section>
