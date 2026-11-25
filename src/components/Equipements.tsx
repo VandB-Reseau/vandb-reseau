@@ -10,6 +10,8 @@ import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import RemoveOutlined from '@mui/icons-material/RemoveOutlined'
@@ -153,9 +155,9 @@ function RangEquipement({ rang, lecture, onRemplacer, onModifier, onDetails }: {
     <Box component="li" aria-label={nom} sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
       {plusieurs ? (
         <>
-          <Box sx={grille}>
+          <Box sx={grille()}>
             <Box sx={{ gridArea: 'nom', minWidth: 0 }}>{titre}</Box>
-            <Typography aria-label={`Quantité totale, ${nom}`} sx={{ gridArea: 'qte', fontWeight: 600, textAlign: { xs: 'left', md: 'center' } }}>{e!.quantite}</Typography>
+            <Typography aria-label={`Quantité totale, ${nom}`} sx={{ gridArea: 'qte', fontWeight: 600, textAlign: { xs: 'right', md: 'center' }, pr: { xs: 2, md: 0 } }}>{e!.quantite}</Typography>
             <Typography color="text.secondary" sx={{ gridArea: 'annee' }}>{`${achats.length} achats`}</Typography>
             <Typography aria-label={`Prix d’achat total HT, ${nom}`} sx={{ gridArea: 'valeur', fontWeight: 600 }}>{e!.valeur !== null ? `${formatEuros(e!.valeur)} HT` : ''}</Typography>
             <Box sx={{ gridArea: 'details' }}>{crayon}</Box>
@@ -176,11 +178,13 @@ function RangEquipement({ rang, lecture, onRemplacer, onModifier, onDetails }: {
   )
 }
 
-const grille = {
-  display: 'grid', alignItems: 'center', columnGap: 1.5, rowGap: 1, py: 0.5,
-  gridTemplateColumns: { xs: '1fr 1fr 48px', md: 'minmax(200px, 1fr) 168px 120px 160px 48px' },
-  gridTemplateAreas: { xs: '"nom nom nom" "qte qte qte" "annee valeur details"', md: '"nom qte annee valeur details"' },
-} as const
+// Joseph (25/11/2026) : sur téléphone, le nom et le compteur sur la même ligne, année et prix en dessous ; un type
+// encore absent du magasin n'occupe qu'une ligne (année et prix n'apparaissent qu'une fois la quantité saisie).
+const grille = (complet = true) => ({
+  display: 'grid', alignItems: 'center', columnGap: { xs: 1, md: 1.5 }, rowGap: 1, py: { xs: 0.25, md: 0.5 },
+  gridTemplateColumns: { xs: 'minmax(0, 1fr) minmax(0, 1fr) 48px', md: 'minmax(200px, 1fr) 168px 120px 160px 48px' },
+  gridTemplateAreas: { xs: complet ? '"nom qte qte" "annee valeur details"' : '"nom qte qte"', md: '"nom qte annee valeur details"' },
+}) as const
 
 function LigneSaisie({ libelle, achat, lecture, actif, onModifier, titre, details }: { libelle: string; achat: AchatEquipement; lecture: boolean; actif: boolean; onModifier: (c: Champs) => void; titre: ReactNode; details?: ReactNode }) {
   const q = achat.quantite
@@ -206,20 +210,24 @@ function LigneSaisie({ libelle, achat, lecture, actif, onModifier, titre, detail
     onModifier({ valeur: v })
   }
   const entree = (valider: () => void) => (x: KeyboardEvent) => { if (x.key === 'Enter') { x.preventDefault(); valider() } }
+  const telephone = !useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  const masque = telephone && !actif
   return (
-    <Box sx={grille}>
+    <Box sx={grille(!masque)}>
       <Box sx={{ gridArea: 'nom', minWidth: 0 }}>{titre}</Box>
-      <Box sx={{ gridArea: 'qte', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Box sx={{ gridArea: 'qte', display: 'flex', alignItems: 'center', gap: 0.5, justifySelf: { xs: 'end', md: 'start' } }}>
         <IconButton disabled={lecture || q < 1} onClick={() => onModifier({ quantite: q - 1 })} aria-label={`Enlever 1, ${libelle}`} sx={{ width: 48, height: 48 }}><RemoveOutlined /></IconButton>
         <TextField value={quantite} disabled={lecture} onChange={(x) => setQuantite(x.target.value)} onBlur={validerQuantite} onKeyDown={entree(validerQuantite)}
-          slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': `Quantité, ${libelle}`, style: { textAlign: 'center' } } }} sx={{ width: 64 }} />
+          slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': `Quantité, ${libelle}`, style: { textAlign: 'center' } } }} sx={{ width: { xs: 56, md: 64 } }} />
         <IconButton disabled={lecture} onClick={() => onModifier({ quantite: q + 1 })} aria-label={`Ajouter 1, ${libelle}`} sx={{ width: 48, height: 48 }}><AddOutlined /></IconButton>
       </Box>
-      <TextField label="Année d’achat" value={annee} disabled={lecture || !actif} onChange={(x) => setAnnee(x.target.value)} onBlur={validerAnnee} onKeyDown={entree(validerAnnee)}
+      {!masque && <>
+      <TextField label={telephone ? 'Année' : 'Année d’achat'} value={annee} disabled={lecture || !actif} onChange={(x) => setAnnee(x.target.value)} onBlur={validerAnnee} onKeyDown={entree(validerAnnee)}
         slotProps={{ htmlInput: { inputMode: 'numeric', 'aria-label': `Année d’achat, ${libelle}` } }} sx={{ gridArea: 'annee' }} />
-      <TextField label="Prix d’achat HT" value={valeur} disabled={lecture || !actif} onChange={(x) => setValeur(x.target.value)} onBlur={validerValeur} onKeyDown={entree(validerValeur)}
+      <TextField label={telephone ? 'Prix HT' : 'Prix d’achat HT'} value={valeur} disabled={lecture || !actif} onChange={(x) => setValeur(x.target.value)} onBlur={validerValeur} onKeyDown={entree(validerValeur)}
         slotProps={{ htmlInput: { inputMode: 'decimal', 'aria-label': `Prix d’achat HT, ${libelle}` }, input: { endAdornment: <InputAdornment position="end">€</InputAdornment> } }} sx={{ gridArea: 'valeur' }} />
       <Box sx={{ gridArea: 'details' }}>{details}</Box>
+      </>}
     </Box>
   )
 }
