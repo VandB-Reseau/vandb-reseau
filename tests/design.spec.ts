@@ -64,12 +64,6 @@ test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ou
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-fiche-profil.png`, fullPage: true })
   await expect(page.getByRole('tab', { name: 'Messages' })).toHaveCount(0)
-  // 310 : le message est dans « ⋯ » de l'en-tête
-  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).first().click()
-  await page.getByRole('menuitem', { name: 'Écrire un message' }).click()
-  // Vague 6 (68A) : sur PC, la conversation s'ouvre sur le côté ; sur téléphone, dans Messages
-  if (isMobile) await expect(page).toHaveURL(/#\/echanges\/magasin\/Lyon%20Test$/)
-  else await expect(page.getByRole('dialog', { name: 'Conversation : Lyon Test' })).toBeVisible()
 })
 
 test('Santé > Chiffres en lignes, tableau au choix sur PC, magasins sans chiffres repliés', async ({ page, isMobile }, info) => {

@@ -23,7 +23,6 @@ import MenuItem from '@mui/material/MenuItem'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import MoreHorizOutlined from '@mui/icons-material/MoreHorizOutlined'
-import ChatBubbleOutlineOutlined from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import type { Ton } from '../components/Social'
 import { ProfilPersonne, rond } from '../components/Portefeuille'
 import { Blason } from '../components/Blason'
@@ -82,7 +81,6 @@ import { aOuvrir } from '../data/ouvertures'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import QueryStatsOutlined from '@mui/icons-material/QueryStatsOutlined'
 import { lienFil } from '../data/messagerie'
-import { useConversationLaterale } from '../components/ConversationLaterale'
 import { anneeDe, libellePasVu, lienCompteRendu, suiviRythme, visitesDuMagasin } from '../data/visites'
 import AddOutlined from '@mui/icons-material/AddOutlined'
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined'
@@ -234,7 +232,6 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
   const { referentiels } = useDroits()
   const ex = m.exploitation
-  const conversation = useConversationLaterale(reseau, m.nom)
   const journal = useEditionJournal(reseau, m, setConfirmation)
   const manquants = [m.code, m.ouvertureConnue, adresseComplete, m.telephone, m.email, ex.typologie, ex.zoneChalandise, ex.licence, ex.instagram, resumeHoraires(ex.horaires).length].filter((x) => !x).length
   return (
@@ -243,11 +240,10 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
         <FilAriane pcSeulement etapes={[{ libelle: 'Magasins', lien: '/magasins' }]} ici={m.nom} />
       </Box>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau}
-        appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir}
+        appeler={m.telephone || m.responsable?.telephone || ''}
         creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => creerGlobal('appel', m.nom), note: () => naviguer(`${lienNote(m.nom)}&ecrire=1`), pratique: () => setNouvellePratique(true) }}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined}
         infos={() => setInfos(true)} lienItineraire={lienItineraire} />
-      {conversation.panneau}
       <Drawer anchor="right" open={infos} onClose={() => setInfos(false)} sx={{ zIndex: (t) => t.zIndex.modal }}
         slotProps={{ paper: { role: 'dialog', 'aria-label': 'Infos du magasin', sx: { width: { xs: '100%', sm: 440 }, bgcolor: 'background.default' } } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
@@ -671,10 +667,10 @@ function SectionChiffres({ reseau, m, saisir, appeler }: { reseau: Reseau; m: Ma
 
 
 // Haut de fiche façon profil : initiales, nom, trois compteurs, puis Appeler, Message, Visite
-function ProfilMagasin({ m, reseau, appeler, message, creer, modifier, fermer, retour, infos, lienItineraire }: {
+function ProfilMagasin({ m, reseau, appeler, creer, modifier, fermer, retour, infos, lienItineraire }: {
   lienItineraire: string | null
   m: Magasin; reseau: Reseau
-  appeler: string; message: () => void; creer: MenuCreer; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }
+  appeler: string; creer: MenuCreer; modifier?: () => void; fermer?: () => void; retour: { libelle: string; aller: () => void }
   infos: () => void // maquette 264 : le panneau « Infos du magasin »
 }) {
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
@@ -700,8 +696,8 @@ function ProfilMagasin({ m, reseau, appeler, message, creer, modifier, fermer, r
         <Tooltip title="Avis Google"><IconButton component="a" href={lienAvisGoogle(m.nom)} target="_blank" rel="noopener" aria-label="Avis Google" sx={rond}><ReviewsOutlined /></IconButton></Tooltip>
         {lienItineraire && <Tooltip title="Itinéraire"><IconButton component="a" href={lienItineraire} target="_blank" rel="noopener" aria-label="Itinéraire" sx={rond}><DirectionsOutlined /></IconButton></Tooltip>}
       </>}
-      // 310 (18/11/2026) : en vue, la visite, l'appel, les infos et « + » ; message et « Montrer au franchisé » dans « ⋯ »
-      icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} message={message} montrer={() => setMontrer(true)} />}
+      // 310 (18/11/2026) : en vue, la visite, l'appel, les infos et « + » ; « Montrer au franchisé » dans « ⋯ »
+      icones={<AutresActions nom={m.nom} modifier={modifier} fermer={fermer} montrer={() => setMontrer(true)} />}
       // 312 : sur téléphone, la visite devient un picto parmi les autres, les onglets se voient dès l'ouverture
       principal={surPC ? <BoutonVisite reseau={reseau} magasin={m.nom} principal /> : undefined}
       actions={<>
@@ -746,7 +742,7 @@ function MenuAjouter({ creer }: { creer: MenuCreer }) {
 }
 
 // Bilan de l'année (sprint 26, F1), favoris et Modifier dans un menu « ⋯ »
-function AutresActions({ nom, modifier, fermer: fermerMagasin, message, montrer }: { nom: string; modifier?: () => void; fermer?: () => void; message: () => void; montrer: () => void }) {
+function AutresActions({ nom, modifier, fermer: fermerMagasin, montrer }: { nom: string; modifier?: () => void; fermer?: () => void; montrer: () => void }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
   const favori = useSuivis().favoris.includes(nom)
   const fermer = () => setAncre(null)
@@ -754,7 +750,7 @@ function AutresActions({ nom, modifier, fermer: fermerMagasin, message, montrer 
     <>
       <Tooltip title="Autres actions"><IconButton onClick={(e) => setAncre(e.currentTarget)} aria-label="Autres actions" aria-haspopup="menu" aria-expanded={!!ancre} sx={{ width: 48, height: 48 }}><MoreHorizOutlined /></IconButton></Tooltip>
       <Menu anchorEl={ancre} open={!!ancre} onClose={fermer} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
-        <MenuItem onClick={() => { fermer(); message() }} sx={{ minHeight: 48 }}><ListItemIcon><ChatBubbleOutlineOutlined /></ListItemIcon>Écrire un message</MenuItem>
+        {/* Plus d'« Écrire un message » (Joseph, 25/11/2026) : la messagerie n'est plus utilisée */}
         {/* Choix 116 : en visite, les chiffres du magasin en grand, sans rien d'interne */}
         <MenuItem onClick={() => { fermer(); montrer() }} sx={{ minHeight: 48 }}><ListItemIcon><PresentToAllOutlined /></ListItemIcon>Montrer au franchisé</MenuItem>
         <MenuItem component={RouterLink} to={lienBilan(nom)} onClick={fermer} sx={{ minHeight: { xs: 48, sm: 48 } }}><ListItemIcon><InsightsOutlined /></ListItemIcon>Bilan de l’année</MenuItem>

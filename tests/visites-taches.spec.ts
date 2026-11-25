@@ -127,6 +127,43 @@ test('84A : une visite non prévue reprend la visite planifiée du magasin', asy
   await expect(page.getByRole('dialog').getByText(/cette saisie la complète, sans créer de doublon/)).toBeVisible()
 })
 
+// Joseph (25/11/2026) : depuis une visite non prévue aussi, des notes au carnet du magasin, enregistrées avec la visite
+test('une visite non prévue ajoute des notes au carnet du magasin, liées à la visite', async ({ page }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, persister: true })
+  // La base rend le numéro de la visite créée
+  await page.route('https://supabase.test/rest/v1/visits**', (r) => (r.request().method() === 'POST' ? r.fulfill({ status: 201, json: [{ id: 777 }] }) : r.fallback()))
+  await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Visite non prévue' }).click()
+  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
+  await expect(d.getByRole('heading', { name: 'Au carnet du magasin' })).toBeVisible()
+  const saisie = d.getByRole('region', { name: 'Nouvelle note de la visite' })
+  await saisie.getByRole('textbox', { name: 'Ajouter au carnet' }).fill('Le franchisé pense à revendre.')
+  await saisie.getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await expect(d.getByRole('list', { name: 'Notes de la visite' })).toContainText('Le franchisé pense à revendre.')
+  await expect(saisie.getByRole('textbox', { name: 'Ajouter au carnet' })).toHaveValue('')
+  // Rien ne part au carnet avant l'enregistrement de la visite
+  expect(ecritures.some((e) => JSON.stringify(e.corps).includes('pense à revendre'))).toBe(false)
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(d).toBeHidden()
+  await expect.poll(() => ecritures.some((e) => JSON.stringify(e.corps).includes('pense à revendre'))).toBe(true)
+  const note = JSON.stringify(ecritures.find((e) => JSON.stringify(e.corps).includes('pense à revendre'))!.corps)
+  expect(note).toMatch(/visite\\?":777/)
+})
+
+// Joseph (25/11/2026) : la messagerie n'est plus utilisée, la fiche du magasin ne propose plus d'écrire un message
+test('la fiche du magasin ne propose plus « Écrire un message »', async ({ page }) => {
+  await seConnecter(page)
+  await page.goto('./#/magasins/Lyon%20Test')
+  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).first().click()
+  await expect(page.getByRole('menuitem', { name: 'Montrer au franchisé' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Écrire un message' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
+  await expect(page.getByRole('menuitem', { name: 'Écrire un message' })).toHaveCount(0)
+})
+
 test('85A : la visite du jour sans compte rendu et la visite à préparer remontent dans À traiter', async ({ page }) => {
   await seConnecter(page, { appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
   const visites = [...visitesFictives, { id: 98, store: 'Lyon Test', visit_date: '2026-10-29', type: 'terrain', visitor: 'Noé MODELE', docs: [], prevue: true }]

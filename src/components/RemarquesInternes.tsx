@@ -80,3 +80,46 @@ export function RemarquesInternes({ reseau, magasin, visite, signaler }: { resea
     </Section>
   )
 }
+
+// Visite non prévue (Joseph, 25/11/2026) : la visite n'a pas encore de numéro, les notes attendent l'enregistrement
+// de la saisie, puis partent au carnet du magasin liées à la visite (noterAuCarnet)
+export function CarnetEnAttente({ reseau, magasin, notes, changer }: { reseau: Reseau; magasin: string; notes: ContenuNote[]; changer: (n: ContenuNote[]) => void }) {
+  const { profil } = useAuth()
+  const couleur = useCouleurTon()
+  const moi = monNomPorteur(reseau, profil) || profil?.nom || ''
+  return (
+    <Box sx={{ display: 'grid', gap: 1 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        <LockOutlined sx={{ fontSize: 18 }} />Pour l’équipe seulement, jamais dans le compte rendu.
+      </Typography>
+      {notes.length > 0 && (
+        <Box component="ul" aria-label="Notes de la visite" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+          {notes.map((n, i) => (
+            <Box component="li" key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+              <Box sx={{ pt: 0.75 }}><Pastille couleur={couleur(n.ton).bord} /></Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{n.texte}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {[libelleTon(n.ton), ...n.themes.map(libelleTheme), n.mentions.length ? `Prévenu${n.mentions.length > 1 ? 's' : ''} : ${n.mentions.join(', ')}` : '', 'Part au carnet à l’enregistrement'].filter(Boolean).join(' · ')}
+                </Typography>
+              </Box>
+              <Tooltip title="Retirer">
+                <IconButton aria-label="Retirer la note" sx={{ width: 48, height: 48 }} onClick={() => changer(notes.filter((_, j) => j !== i))}><DeleteOutline /></IconButton>
+              </Tooltip>
+            </Box>
+          ))}
+        </Box>
+      )}
+      <Box component="section" aria-label="Nouvelle note de la visite" sx={{ border: 1, borderColor: 'divider', borderRadius: 3, p: 1 }}>
+        <SaisieNote label="Ajouter au carnet" autres={collegues(reseau, magasin, moi)} envoyer={async (n) => { changer([...notes, n]); return true }} occupe={!moi} libelleEnvoi="Ajouter" />
+      </Box>
+    </Box>
+  )
+}
+
+export async function noterAuCarnet(reseau: Reseau, magasin: string, visite: number, par: string, notes: ContenuNote[]) {
+  for (const { texte, ton, themes, mentions } of notes) {
+    const note: NoteMagasin = { id: nouvelIdNote(), date: reseau.jour, quand: new Date().toISOString(), texte, par, ton, visite, ...(themes.length ? { themes } : {}), ...(mentions.length ? { mentions } : {}) }
+    await enregistrerNoteMagasin(magasin, note)
+  }
+}

@@ -108,5 +108,7 @@ changement ; en cas de doute, lui poser la question plutôt que de trancher seul
   le RR et le Directeur voient les leurs une par une, et une ligne par personne pour celles des autres.
 - Barre du bas de l'équipe sur téléphone (Joseph, 25/11/2026) : Accueil, Magasins, Visites, Carnet, Tâches. L'Agenda
   est dans le menu du compte. La barre du franchisé ne change pas.
+- Notes au carnet depuis une visite non prévue aussi (Joseph, 25/11/2026), enregistrées avec la visite. La fiche du
+  magasin ne propose plus d'écrire un message (messagerie non utilisée).
 
 Le détail des règles d'interface et de code est dans [CLAUDE.md](../CLAUDE.md) et [architecture.md](architecture.md).
