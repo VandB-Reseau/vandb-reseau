@@ -3,6 +3,8 @@
 Base Supabase (PostgreSQL) du projet `aipodcpbakywbrrilaud`. Le schéma est entièrement décrit par les
 migrations de [`supabase/migrations/`](../supabase/migrations) ; ce document en donne la carte.
 Mode d'emploi des migrations : [`supabase/README.md`](../supabase/README.md).
+Le schéma `pilotage` (budgets, réel de caisse, frais, équipe, simulations) a sa propre carte :
+[base-pilotage.md](base-pilotage.md).
 
 Mis à jour le 26/10/2026 (migration `0038`).
 

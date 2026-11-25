@@ -1,7 +1,20 @@
 # Base Supabase : migrations
 
 Tout le schéma (tables, règles d'accès, fonctions, espaces de fichiers) est dans `migrations/`, une migration par
-changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [docs/base-de-donnees.md](../docs/base-de-donnees.md).
+changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [docs/base-de-donnees.md](../docs/base-de-donnees.md)
+(schéma `public`) et [docs/base-pilotage.md](../docs/base-pilotage.md) (schéma `pilotage`). Procédure pas à pas :
+[docs/deploiement.md](../docs/deploiement.md).
+
+## Deux séries, une seule à venir (25/11/2026)
+
+| Dossier | Contenu | Journal en base |
+| --- | --- | --- |
+| `migrations/NNNN_*.sql` | Série de l'app, 0001 à 0054, puis **toute** nouvelle migration, quel que soit le schéma touché (`public` ou `pilotage`) : prochaine libre **0055** | `public.journal_migrations` |
+| `migrations/pilotage/NNNN_*.sql` | Historique du schéma `pilotage` (0001 à 0038), venu du dépôt `vandb-pilotage` à l'identique ; déjà passé en ligne, **figé** : on n'y ajoute plus rien | `pilotage.journal_migrations` |
+
+Les deux séries ont des numéros communs (0001 à 0038) : on désigne une migration historique du pilotage par
+« pilotage 0026 », une migration de l'app par son seul numéro. Pour reconstruire une base vide : app 0001 à 0038,
+pilotage 0001 à 0038, puis app 0039 et suivantes (0039 et 0040 lisent le schéma `pilotage`).
 
 | Migration | Contenu | Date |
 | --- | --- | --- |
@@ -49,10 +62,55 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 | `0042_objectifs_magasins` | Rubrique `objectifs` dans `suivi_magasins` (objectifs chiffrés par magasin, équipe seulement) | 10/11/2026 |
 | `0043_animation_vague4` | Rubrique `plan` de `suivi_magasins` et `plans_franchise()` ; `statut_action_franchise` ; table `entretiens` (RR–Coach) et `remarque_entretien` ; sondages à réponse libre (`chiffre`, `texte`) pour les remontées ; table `demandes` fermée et ses fonctions (`creer_demande`, `mes_demandes`, `completer_demande`, `repondre_demande`) | 10/11/2026 |
 | `0044_actualites_vague5` | Prise de connaissance des communications (colonne `connaissance`, table `communications_connaissances` fermée, `demander_connaissance`, `prendre_connaissance`, `connaissances`) ; rubrique `integration` de `suivi_magasins` ; `animation_franchise()` (temps forts, parcours et suivi d'intégration du franchisé) | 10/11/2026 |
+| `0045_messagerie_vague6` | Messagerie, refonte vague 6 | 10/11/2026 |
 | `0046_equipements_magasins` | Rubrique `equipements` de `suivi_magasins` ; `animation_franchise()` renvoie aussi les équipements des magasins du franchisé, qui les modifie par `ecrire_equipements()` | 14/11/2026 |
 | `0047_operations_mesure_priorites` | Rubrique `operations` de `suivi_magasins` (journal des opérations commerciales) ; `animation_franchise()` la renvoie au franchisé, qui la modifie par `ecrire_operations()` ; `plans_franchise()` renvoie aussi la mesure en caisse des priorités | 15/11/2026 |
 | `0048_marche_exterieur` | Rubrique `exterieur` de `suivi_magasins` (plan d'action marché extérieur) ; `animation_franchise()` la renvoie au franchisé, qui la modifie par `ecrire_exterieur()` | 16/11/2026 |
 | `0049_taches_exterieur` | Actions du plan marché extérieur rangées en tâches (`actions`, étiquette `exterieur`) ; `tache_exterieur_franchise()` ; reprise des actions déjà saisies | 17/11/2026 |
+| `0050_rapports_pilotage` | Rapports de l'onglet « Pilotage » (graphes, tableaux croisés, favoris, modèles) | 17/11/2026 |
+| `0051_taches_campagnes` | Points des campagnes rangés en tâches du magasin | 18/11/2026 |
+| `0052_ajout_coach` | Ajout d'un Coach réparé (numéro automatique de `cs_overrides`) | 18/11/2026 |
+| `0053_notes_equipe` | Carnet du magasin et commentaires du budget « équipe seule » | 24/11/2026 |
+| `0054_acces_direction` | Accès « Direction » en lecture (avec pilotage 0038) | 24/11/2026 |
+
+## Historique du pilotage (`migrations/pilotage/`)
+
+| Migration | Contenu | Date |
+| --- | --- | --- |
+| `0001_socle_pilotage` | Schéma `pilotage`, `mes_magasins()`, paramètres réseau, budgets et leur circuit, réel mensuel, `magasins_du_compte()`, journal | 26/10/2026 |
+| `0002_hypotheses_par_niveaux` | Groupes de magasins, cibles du réseau et des groupes, base et ajustements du budget, `budgets_du_compte()` | 26/10/2026 |
+| `0003_reel_annee` | Réel de l'année : CA, tickets par univers, codes caisse, saisie ouverte à l'équipe et au franchisé sur leurs magasins | 27/10/2026 |
+| `0004_equipe` | Équipe des magasins par poste | 27/10/2026 |
+| `0005_frais` | Frais ligne par ligne, emprunts et amortissements | 27/10/2026 |
+| `0006_suivi_reseau` | `reel_du_compte` : réel de tous les magasins du compte, par mois | 27/10/2026 |
+| `0007_filtre_rr` | `reel_du_compte` donne aussi les RR de chaque magasin | 28/10/2026 |
+| `0008_quadrimestres` | Agrégats comptables tous les 4 mois | 28/10/2026 |
+| `0009_parts_realisees` | Part de l'année réalisée par univers (atterrissage sans réel de l'an dernier) | 28/10/2026 |
+| `0010_correspondances_fec` | Rubrique choisie pour un compte du FEC rangé autrement, par magasin | 28/10/2026 |
+| `0011_echanges_budget` | Échanges sur le budget, versions automatiques, `mon_nom()` | 28/10/2026 |
+| `0012_actions` | Plan d'action relié aux alertes (n'est plus écrit depuis l'app 0039 : tâches du réseau) | 28/10/2026 |
+| `0013_cave_bar_separes` | `reel_du_compte` sépare Cave et Bar | 28/10/2026 |
+| `0014_ouvertures` | Date d'ouverture des magasins (remplacée par la fiche magasin, 0024) | 28/10/2026 |
+| `0015_versions_et_equipe` | Heures au mois, enveloppes de primes, versions nommées du budget | 28/10/2026 |
+| `0016_alertes_commerciales` | Alertes tickets et panier | 28/10/2026 |
+| `0017_extras` | Extras = poste de l'équipe (heures × taux horaire) | 29/10/2026 |
+| `0018_validation_rr` | Le RR valide ou rouvre le budget de ses magasins | 29/10/2026 |
+| `0019_hausses_equipe` | Hausses de salaire datées par poste | 02/11/2026 |
+| `0020_parametres_figes` | Paramètres du réseau figés dans le budget à sa validation | 02/11/2026 |
+| `0021_parametrage` | Contrôle de gestion, journal des changements de paramètres | 02/11/2026 |
+| `0022_envoi_au_siege` | Envoi du budget au siège et position du siège | 02/11/2026 |
+| `0023_stock_fin_de_mois` | Valeur du stock en fin de mois | 03/11/2026 |
+| `0024_ouvertures_reseau` | Date d'ouverture lue dans la fiche magasin de l'app | 03/11/2026 |
+| `0025_commentaires` | Commentaires posés sur un point précis du budget | 03/11/2026 |
+| `0026_emprunts` | Prêts des magasins | 03/11/2026 |
+| `0027_annees` | Années du pilotage : ouverture de campagne, démarrage du suivi, clôture | 03/11/2026 |
+| `0028_preparation_fusion` | Préparation de la fusion : renommages, concordance du CA | 03/11/2026 |
+| `0029_controle_gestion_chiffres` | Le contrôle de gestion lit les chiffres de tous les magasins | 03/11/2026 |
+| `0030_stock_exterieur` | Stock de l'Extérieur en fin de mois | 09/11/2026 |
+| `0031_simulations` | Simulations gardées (`pilotage.simulations`) | 13/11/2026 |
+| `0032_simulations_boite_a_outils` à `0036_simulations_prix_fut` | Types de simulateurs ajoutés un à un | 14 au 20/11/2026 |
+| `0037_commentaires_equipe` | Commentaires du budget « équipe seule » et mentions | 24/11/2026 |
+| `0038_acces_direction` | Accès « Direction » en lecture | 24/11/2026 |
 
 ## Règles
 
@@ -62,7 +120,8 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
   seule ne rouvre jamais un accès (vérifié par le test).
 - **Nouvelle migration** pour tout changement : on ne modifie plus une migration déjà passée en ligne, sauf
   correction de sécurité signalée dans son en-tête. Nom : `NNNN_sujet_en_minuscules.sql`.
-- **Journal** : chaque nouvelle migration se termine par l'ajout de sa ligne dans `journal_migrations`
+- **Journal** : chaque nouvelle migration se termine par l'ajout de sa ligne dans `public.journal_migrations`, y compris
+  quand elle touche au schéma `pilotage`
   (`INSERT … ON CONFLICT (numero) DO UPDATE SET passee_le = now()`), pour savoir ce qui est passé en ligne.
 - En-tête de chaque migration : objet, date et demande de fusion, migrations dont elle dépend, règles d'accès.
 - Aucune donnée réelle : le dépôt est public. Les données de test sont fictives.
@@ -76,8 +135,9 @@ npm run test:base
 Crée un PostgreSQL vide en local, y ajoute le strict minimum de Supabase (`tests/supabase_minimal.sql`),
 rejoue toutes les migrations deux fois, puis après avoir reproduit l'incident du 21/10/2026 (un ancien script
 qui rouvrait tout), puis une fois dans l'ordre inverse, et contrôle les règles d'accès avec
-des comptes fictifs (`tests/regles_acces.sql`) : Directeur, Coach, franchisé, compte sans rôle. Lancé aussi
-par GitHub Actions avant chaque publication.
+des comptes fictifs (`tests/regles_acces.sql`) : Directeur, Coach, franchisé, compte sans rôle. Même chose pour
+l'historique du pilotage (`tests/pilotage/`), puis les deux séries ensemble. Détail : [docs/tests-et-ci.md](../docs/tests-et-ci.md).
+Lancé aussi par GitHub Actions sur chaque demande de fusion et avant chaque publication.
 
 ## Fonctions Supabase (Edge Functions)
 
