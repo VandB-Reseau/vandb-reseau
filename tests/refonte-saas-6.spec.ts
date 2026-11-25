@@ -128,23 +128,6 @@ test('63A et 71A : vues des conversations et recherche dans les messages', async
   await lisible(page, isMobile)
 })
 
-test('68A : la conversation du magasin s’ouvre sur le côté depuis la fiche', async ({ page, isMobile }) => {
-  await seConnecter(page, { appMetadata: HUGO, messagerie: { version: 5, messages: [msg(1, 'Vitrine posée.')] } })
-  await page.goto('./#/magasins/Annecy%20Test')
-  // 310 : le message est dans « ⋯ » de l'en-tête
-  await page.getByRole('main').getByRole('button', { name: 'Autres actions' }).first().click()
-  await page.getByRole('menuitem', { name: 'Écrire un message' }).click()
-  if (isMobile) {
-    await expect(page).toHaveURL(/echanges\/magasin\/Annecy%20Test/)
-    return
-  }
-  const panneau = page.getByRole('dialog', { name: 'Conversation : Annecy Test' })
-  await expect(panneau.getByRole('list', { name: /^Messages de / })).toContainText('Vitrine posée.')
-  await expect(page).toHaveURL(/magasins\/Annecy%20Test/)
-  await panneau.getByRole('button', { name: 'Fermer la conversation' }).click()
-  await expect(panneau).toBeHidden()
-})
-
 test('téléphone : les notifications se referment, un seul « + » sur Magasins, menu du compte en rubriques', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'Retours du téléphone')
   await seConnecter(page)
@@ -161,6 +144,6 @@ test('téléphone : les notifications se referment, un seul « + » sur Magasins
   await page.getByRole('button', { name: 'Mon compte' }).click()
   const menu = page.getByRole('menu')
   for (const r of ['Réseau', 'Animation', 'Réglages']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-  await expect(menu.getByRole('menuitem', { name: 'Visites' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Agenda', exact: true })).toBeVisible()
   await lisible(page, isMobile)
 })

@@ -42,6 +42,10 @@ import { dateCourte, dateHeure } from '../lib/format'
 import { libelleTypeVisite, typesVisite, type ActionPlan, type Document, type Reseau, type Visite } from '../data/modele'
 import { TexteDicte } from './Dictee'
 import { ChampDate } from './ChampDate'
+import { CarnetEnAttente, noterAuCarnet } from './RemarquesInternes'
+import type { ContenuNote } from './SaisieNote'
+import { useAuth } from '../auth/AuthContext'
+import { monNomPorteur } from '../data/actions'
 
 // Personnes qui peuvent visiter : Coachs, RR, Directeur
 export function visiteursGroupes(reseau: Reseau): { nom: string; groupe: string }[] {
@@ -58,7 +62,7 @@ export function visiteurs(reseau: Reseau): string[] { return visiteursGroupes(re
 interface Brouillon {
   magasins: string[]; date: string; type: string; participants: string[]; signatureRequise: boolean; lienSigne: string; dateSignature: string
   documents: Document[]; notes: string; parties: string[]; plan: ActionPlan[]; faites?: Record<string, boolean>; mois: string; chiffres: Record<string, string>
-  revues?: RevuesTaches; priorites?: RevuesPriorites; sujets?: Record<string, EtatSujet>
+  revues?: RevuesTaches; priorites?: RevuesPriorites; sujets?: Record<string, EtatSujet>; carnet?: ContenuNote[]
 }
 
 // Une partie de la saisie, repliable, avec son ancre pour le sommaire (vague 7, 83A)
@@ -103,6 +107,9 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [revues, setRevues] = useState<RevuesTaches>(() => b?.revues ?? Object.fromEntries(Object.entries(b?.faites ?? {}).filter(([, v]) => v).map(([k]) => [k, { statut: 'faite' as const }])))
   const [revuesPriorites, setRevuesPriorites] = useState<RevuesPriorites>(b?.priorites ?? {})
   const [etatsSujets, setEtatsSujets] = useState<Record<string, EtatSujet>>(b?.sujets ?? {})
+  // Notes au carnet d'une visite non prévue (Joseph, 25/11/2026) : enregistrées avec la visite
+  const [carnet, setCarnet] = useState<ContenuNote[]>(b?.carnet ?? [])
+  const { profil } = useAuth()
   const unSeul = magasins.length <= 1
   const contact = typesContact.includes(type)
   const audit = typesAudit.includes(type) && unSeul
@@ -137,7 +144,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const [chiffresRepris, setChiffresRepris] = useState(!b?.chiffres)
   if (!chiffresRepris) { setChiffresRepris(true); chiffres.setValeurs(b!.chiffres) }
   // Toute saisie est gardée sur l'appareil ; rien n'est gardé tant que rien n'a changé
-  const courant: Brouillon = { magasins, date, type, participants, signatureRequise, lienSigne, dateSignature, documents, notes, parties, plan, revues, priorites: revuesPriorites, sujets: etatsSujets, mois: chiffres.mois, chiffres: chiffres.valeurs as Record<string, string> }
+  const courant: Brouillon = { magasins, date, type, participants, signatureRequise, lienSigne, dateSignature, documents, notes, parties, plan, revues, priorites: revuesPriorites, sujets: etatsSujets, ...(carnet.length ? { carnet } : {}), mois: chiffres.mois, chiffres: chiffres.valeurs as Record<string, string> }
   const [depart] = useState(() => JSON.stringify(courant))
   const texte = JSON.stringify(courant)
   useEffect(() => { if (texte !== depart) garderBrouillon(cleBrouillon, JSON.parse(texte)) }, [texte, depart, cleBrouillon])
@@ -148,6 +155,8 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const cible = visite ?? reprise
   const sujets = unSeul && !contact && magasins[0] && (!visite || visite.prevue || visite.date >= reseau.jour) ? ordreDuJour(reseau, magasins[0]) : []
   const avecPlan = unSeul && !contact && !!magasins[0]
+  // Une visite déjà enregistrée a son bloc « Au carnet du magasin » sur sa page ; ici, seulement une saisie nouvelle
+  const avecCarnet = avecPlan && !cible?.id
   const nbOuvertes = avecPlan ? actionsEnCours(reseau, new Set([magasins[0]])).filter((x) => !x.campagne && (!x.visite || x.visite.id !== (visite?.id ?? null))).length : 0
   const valide = magasins.length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(date) && !(audit && !grilleRemplie && scoreInvalide)
   const noms = reseau.magasins.map((m) => m.nom)
@@ -156,7 +165,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
   const prioritesActivesNb = avecPlan ? prioritesDu(reseau, magasins[0]).filter((p) => p.statut === 'active').length : 0
   const sommaire = contact ? [] : [
     ...(sujets.length ? [{ id: 'saisie-ordre', titre: 'Ordre du jour' }] : []), ...(avecPlan ? [{ id: 'saisie-plan', titre: 'Plan d’action' }] : []),
-    { id: 'saisie-constats', titre: 'Constats' }, ...(avecAudits ? [{ id: 'saisie-audits', titre: 'Audits' }] : []), ...(audit || unSeul ? [{ id: 'saisie-chiffres', titre: audit ? 'Grille et chiffres' : 'Chiffres' }] : []), { id: 'saisie-documents', titre: 'Photos et documents' },
+    { id: 'saisie-constats', titre: 'Constats' }, ...(avecCarnet ? [{ id: 'saisie-carnet', titre: 'Carnet' }] : []), ...(avecAudits ? [{ id: 'saisie-audits', titre: 'Audits' }] : []), ...(audit || unSeul ? [{ id: 'saisie-chiffres', titre: audit ? 'Grille et chiffres' : 'Chiffres' }] : []), { id: 'saisie-documents', titre: 'Photos et documents' },
   ]
   const quand = date === reseau.jour ? 'aujourd’hui' : /^\d{4}-\d{2}-\d{2}$/.test(date) ? `le ${dateCourte(date)}` : ''
   return (
@@ -187,6 +196,7 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
         const sansCompteRendu = !cible || (!cible.notes.trim() && !cible.parties.some((x) => x.trim()))
         if (!contact && sansCompteRendu && date <= reseau.jour) notifier('visite', ids)
         const m0 = magasins[0]
+        if (avecCarnet && carnet.length && ids[0]) await noterAuCarnet(reseau, m0, ids[0], monNomPorteur(reseau, profil) || profil?.nom || '', carnet)
         // Revue du plan (87A) : clés « visite:index » (plan d'une visite) ou « l:id » (tâche hors visite)
         if (avecPlan) {
           const lot = Object.entries(revues).map(([k, r]) => ({ cible: (k.startsWith('l:') ? { libre: k.slice(2), magasin: m0 } : { visite: Number(k.split(':')[0]), index: Number(k.split(':')[1]) }) as CibleTache, revue: r }))
@@ -294,6 +304,11 @@ export function DialogVisite({ reseau, visite, magasinsInitiaux = [], typeInitia
           <BlocSaisie id="saisie-constats" titre="Constats">
             <ConstatsVisite tournee={!unSeul} notes={notes} setNotes={setNotes} parties={parties} setParties={setParties} />
           </BlocSaisie>
+          {avecCarnet && (
+            <BlocSaisie id="saisie-carnet" titre="Au carnet du magasin" detail={carnet.length ? `${carnet.length} note${carnet.length > 1 ? 's' : ''}` : undefined}>
+              <CarnetEnAttente reseau={reseau} magasin={magasins[0]} notes={carnet} changer={setCarnet} />
+            </BlocSaisie>
+          )}
           {avecAudits && (
             <BlocSaisie id="saisie-audits" titre="Audits" detail={ouvertsEffectifs.length ? `${ouvertsEffectifs.length} ouvert${ouvertsEffectifs.length > 1 ? 's' : ''}` : undefined}>
               {ouvertsEffectifs.map((t) => (

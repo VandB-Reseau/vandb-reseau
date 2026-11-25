@@ -43,7 +43,7 @@ test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du 
   if (isMobile) {
     const fond = await page.getByRole('banner').evaluate((e) => getComputedStyle(e).backgroundColor)
     expect(fond).toBe('rgb(0, 0, 0)')
-    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
+    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Magasins', 'Visites', 'Carnet', /Tâches$/])
     expect(await zonesTropPetites(page)).toEqual([])
   } else {
     await expect(page.getByRole('banner')).toHaveCount(0)

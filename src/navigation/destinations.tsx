@@ -65,7 +65,8 @@ export const performance: Destination = { chemin: '/performance', libelle: 'Perf
 export const agenda: Destination = { chemin: '/plus/agenda', libelle: 'Agenda', description: 'Visites, campagnes, formations et événements', icone: <CalendarMonthOutlined />, sprint: 'Sprint 3' }
 // Messagerie cachée (Joseph, 24/11/2026) : WhatsApp reste le canal avec les franchisés ; les notes de l'équipe sont dans
 // le Carnet de chaque magasin. Les adresses /echanges restent ouvertes (anciens liens), sans entrée de menu.
-export const barreTelephone: Destination[] = [accueil, agenda, magasins, taches]
+// Barre du bas de l'équipe (Joseph, 25/11/2026) : Accueil, Magasins, Visites, Carnet, Tâches ; l'Agenda passe au menu du compte
+export const barreTelephone: Destination[] = [accueil, magasins, visites, carnetReseau, taches]
 // Demandes des franchisés au siège (refonte vague 4, Joseph 10/11/2026, 37A)
 export const demandes: Destination = { chemin: '/demandes', libelle: 'Demandes', description: 'Demandes des franchisés au siège, par thème, avec leur délai de réponse', icone: <SupportAgentOutlined />, iconeActive: <SupportAgent />, sprint: 'Refonte' }
 // Rubrique Animation (refonte vague 3, Joseph 09/11/2026, 27A) : Infos réseau et Campagnes (campagnes, déploiements,
@@ -119,8 +120,10 @@ export const demandesFranchise: Destination = { ...demandes, libelle: 'Mes deman
 export const menuTelephone = (role: string | undefined) => menuTelephoneRubriques(role).flatMap((r) => r.destinations)
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 // 308 (18/11/2026) : sans Magasins (déjà dans la barre du bas), Siège remonté avant Performance
+// 25/11/2026 : sans Visites ni Carnet (dans la barre du bas) ; l'Agenda y arrive, sous « Mon travail »
 export const menuTelephoneRubriques = (role: string | undefined, sansEvolution = false): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([sante, visites, carnetReseau, ...(sansEvolution ? [] : [evolution])], role) },
+  { titre: 'Mon travail', destinations: pourRole([agenda], role) },
+  { titre: 'Réseau', destinations: pourRole([sante, ...(sansEvolution ? [] : [evolution])], role) },
   { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
   { titre: 'Performance', destinations: pourRole([chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
 ].filter((r) => r.destinations.length)
