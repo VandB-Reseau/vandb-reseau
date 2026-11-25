@@ -1,12 +1,11 @@
 import { expect, test, type Locator } from '@playwright/test'
-import { COMPTE, seConnecter, simulerSupabase, textesTropPetits, deplierATraiter, deplierGroupes } from './supabase-simule'
+import { COMPTE, seConnecter, simulerSupabase, textesTropPetits, deplierATraiter } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 // Une seule couleur forte par ligne, onglets qui tiennent sur l'écran du téléphone,
 // « Voir plus » gardé au retour arrière (Joseph, 21/10/2026)
 
 const fond = (l: Locator) => l.evaluate((e) => getComputedStyle(e).backgroundColor)
-const transparent = 'rgba(0, 0, 0, 0)'
 
 // 361 (Joseph, 23/11/2026) : les statuts deviennent des badges teintés (fond pâle, texte foncé), rouge compris ;
 // les étiquettes de type restent sans fond
@@ -14,10 +13,8 @@ test('statuts en badges teintés, aucune pastille pleine ; les types restent san
   await seConnecter(page)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await deplierATraiter(page)
-  expect(await fond(aTraiter.getByText('Décroche', { exact: true }))).toBe('rgba(194, 65, 25, 0.14)')
-  await aTraiter.getByRole('button', { name: /^À voir · \d+$/ }).click()
-  await deplierGroupes(page)
-  expect(await fond(aTraiter.getByText('Visite', { exact: true }).first())).toBe(transparent)
+  // 429 à 436 (25/11/2026) : la tâche en retard (rouge) en badge teinté
+  expect(await fond(aTraiter.getByText(/^\d+ tâches? en retard$/).first())).toBe('rgba(194, 65, 25, 0.14)')
   await page.goto('./#/magasins')
   const liste = page.getByRole('main')
   // PC large : l'alerte orange est un badge teinté dans la colonne Statut

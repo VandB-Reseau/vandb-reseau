@@ -75,7 +75,7 @@ test('S3 : la ligne de chaque Coach tient sur une ligne : taux, visites sur réf
 
 test('S4 : une tâche se coche depuis l’accueil et « Annuler » la remet en cours', async ({ page }, info) => {
   const ecritures: Ecriture[] = []
-  await seConnecter(page, { ecritures })
+  await seConnecter(page, { ecritures, appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
   await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
   const bouton = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: 'Tâche faite : Refaire la vitrine' })
   await expect(bouton).toBeVisible()

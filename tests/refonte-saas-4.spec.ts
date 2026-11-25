@@ -111,14 +111,6 @@ test('34A : le RR prépare et note l’entretien du mois, le Coach ajoute ses re
   expect(entretiens.find((e) => e.mois === '2026-10')?.remarques).toBe('D’accord, je m’en occupe.')
 })
 
-test('34A et 38B : le RR retrouve les entretiens du mois à faire dans À traiter', async ({ page }) => {
-  await seConnecter(page, { ...SAM, entretiens: [] })
-  const aTraiter = page.getByRole('region', { name: 'À traiter' }).first()
-  await toutATraiter(page)
-  await expect(aTraiter.getByText('Entretien avec Noé MODELE').first()).toBeVisible()
-  await expect(aTraiter.getByText('Entretien avec Inès EXEMPLE').first()).toBeVisible()
-})
-
 // Rituels retirés (Joseph, 15/11/2026) : ni réglage, ni onglet de l'Équipe ; l'ancienne adresse mène à l'Équipe
 test('33A : plus de rituels dans les Paramètres ni dans l’Équipe', async ({ page }) => {
   await seConnecter(page)
@@ -149,9 +141,7 @@ test('37A : le franchisé envoie une demande, le siège la traite', async ({ pag
   // Le siège : la demande est à traiter, on répond et on la résout
   await page.evaluate(() => { localStorage.clear(); sessionStorage.clear() })
   await seConnecter(page, { demandes, config: { demandes_themes: { caisse: 'Tom TECHNICIEN' } } })
-  const aTraiter = page.getByRole('region', { name: 'À traiter' }).first()
-  await toutATraiter(page)
-  await expect(aTraiter.getByText('La caisse ne sort plus les tickets cadeaux').first()).toBeVisible()
+  // 435 (25/11/2026) : les demandes se traitent dans leur page, plus dans À traiter
   await page.goto('./#/demandes')
   await expect(page.getByRole('heading', { level: 1, name: 'Demandes' })).toBeVisible()
   if (isMobile) await page.getByRole('button', { name: 'Filtres' }).click()
@@ -203,7 +193,7 @@ test('42A : barre du téléphone et journée du Coach', async ({ page, isMobile 
   for (const n of [/^Accueil/, /^Agenda/, /^Magasins/, /^Tâches/]) await expect(barre.getByRole('button', { name: n })).toBeVisible()
   await deplierPoint(page)
   await expect(page.getByRole('region', { name: 'Ma journée' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Pilotage' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Pilotage' })).toHaveCount(0)
   await page.getByRole('dialog', { name: 'Mon point du jour' }).getByRole('button', { name: 'Fermer' }).click()
   // Le « + » : les gestes du terrain d'abord
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click()

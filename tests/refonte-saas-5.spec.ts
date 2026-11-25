@@ -48,14 +48,6 @@ test('43A et 46A : l’accueil de l’équipe met À la une en tête, le fil au 
   await lisible(page, isMobile, false)
 })
 
-test('46A : au bout de 7 jours, la prise de connaissance qui manque arrive dans À traiter', async ({ page, isMobile }) => {
-  await seConnecter(page, { communications: communications() })
-  await page.goto('./#/')
-  if (isMobile) { await deplierPoint(page); await page.getByRole('button', { name: /^Voir les \d+$/ }).first().click() }
-  else await page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Voir les \d+$/ }).click()
-  await expect(page.getByText('2 franchisés sans prise de connaissance : Paul MULTI, Franchisé 4')).toBeVisible()
-})
-
 test('44A et 46A : le franchisé lit À la une, donne sa prise de connaissance, retrouve le fil au centre', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { acces: PAUL, ecritures, communications: communications() })
@@ -178,28 +170,10 @@ test('51A : dix entrées dans le menu, Équipe et Paramètres au menu du compte,
   await expect(nav.getByRole('button', { name: /^Magasins/ })).not.toHaveAttribute('aria-current', 'page')
 })
 
-test('54A : « Plus tard » met une ligne de À traiter de côté, « Tout revoir » la remet', async ({ page, isMobile }) => {
-  test.skip(isMobile, 'Colonne Aujourd’hui : PC')
+// 429 (25/11/2026) : plus d'indicateur chiffré sur l'accueil ; la carte reste dans Chiffres
+test('53A : une seule carte d’indicateur, cliquable, dans Chiffres', async ({ page, isMobile }) => {
   await seConnecter(page)
-  await page.goto('./#/')
-  const bloc = page.getByRole('region', { name: 'À traiter' })
-  const bouton = bloc.getByRole('button', { name: /^Plus tard : / }).first()
-  const nom = (await bouton.getAttribute('aria-label'))!.replace('Plus tard : ', '')
-  const avant = await bloc.getByRole('button', { name: `Plus tard : ${nom}` }).count()
-  await bouton.click()
-  await expect(page.getByText(`« ${nom} » revient dans 7 jours.`)).toBeVisible()
-  await expect(bloc.getByRole('button', { name: `Plus tard : ${nom}` })).toHaveCount(avant - 1)
-  await bloc.getByRole('button', { name: '1 mis de côté · Tout revoir' }).click()
-  await expect(bloc.getByRole('button', { name: /^Plus tard : / }).first()).toBeVisible()
-})
-
-test('53A : une seule carte d’indicateur, cliquable, sur l’accueil et dans Chiffres', async ({ page, isMobile }) => {
-  await seConnecter(page)
-  await page.goto('./#/')
-  // 278 : sur téléphone, Le point s'ouvre par le picto « Mon point du jour » de la barre du haut
-  await deplierPoint(page)
-  await page.getByRole('region', { name: 'Pilotage' }).getByRole('link', { name: /^Décrochent :/ }).click()
-  await expect(page).toHaveURL(/#\/performance/)
+  await page.goto('./#/performance')
   // Dans Chiffres, la carte filtre la liste
   const carte = page.getByRole('button', { name: /^Dans la norme :/ })
   await carte.click()

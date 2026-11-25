@@ -9,7 +9,7 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
-- Carnet plus simple à écrire (Joseph, 25/11/2026). **Sans migration.** Barre d'écriture compacte en style messagerie
+- Carnet plus simple à écrire (Joseph, 25/11/2026). Barre d'écriture compacte en style messagerie
   (texte, micro, envoyer ; ton en pastille ; thèmes et collègues dans des menus, « @ » ouvre les collègues ;
   Ctrl+Entrée envoie), aussi pour répondre et dans la fenêtre « Nouvelle note ». Sur la page d'une visite, « Au carnet du
   magasin » remplace les remarques internes : 2 ou 3 notes ajoutées d'affilée, liées à la visite.
@@ -17,6 +17,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   gardée sur l'appareil sans réseau). « Appel » devient un compte rendu d'échange léger (Appel ou Point, date, texte ;
   ni signature ni envoi), lu dans le carnet et par le franchisé dans son espace, sans PDF.
   **Migration à passer : `0055_echanges_franchise.sql`** (appels et points dans `espace_franchise()`).
+- « Mon point du jour » et « Aujourd'hui » recentrés sur l'action terrain (choix 429 à 436, Joseph, 25/11/2026).
+  **Sans migration.** Plus de chiffre d'affaires, de magasins qui décrochent, de santé du parc ni de période Mois/Cumul
+  sur l'Accueil. Ma journée (aujourd'hui et demain, Faite, Reporter), puis quatre familles de cinq lignes : comptes
+  rendus, tâches, carnet (avec « Je m'en occupe »), magasins à visiter. Le RR et le Directeur voient une ligne par
+  personne pour les retards de leur équipe. Intégrations, demandes, contrats, campagnes et entretiens restent dans leurs
+  pages.
 - Fiche d'un Coach ou d'un Responsable Régional : la fiche personnelle quitte la Vue d'ensemble et s'ouvre par le picto (i)
   de l'en-tête (« Fiche personnelle » sur PC), dans un panneau à droite, comme « Infos du magasin » (Joseph, 25/11/2026).
   Sans migration.

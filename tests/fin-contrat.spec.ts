@@ -50,7 +50,7 @@ test('un associé d’un intégré a aussi son mandat', async ({ page }) => {
   await expect(associe(page, 'Associé UN')).toContainText(`Mandat du ${dateCourte(a.debut)} au ${dateCourte(a.fin)} · ${a.numero}`)
 })
 
-test('une entrée récente redémarre le mandat ; la fin à 6 mois apparaît dans Contrats', async ({ page, isMobile }, info) => {
+test('une entrée récente redémarre le mandat ; la fin à 6 mois se lit sur la fiche du magasin', async ({ page }) => {
   // Franchisé entré il y a 4 ans et 10 mois : fin du 1er mandat dans 2 mois
   const entree = plusMois(plusAns(jour, -5), 2)
   const associes = { 'Nantes Test': [{ id: 'x1', nom: 'Franchisé 2', entree, sortie: '', mandats: [] }] }
@@ -59,14 +59,12 @@ test('une entrée récente redémarre le mandat ; la fin à 6 mois apparaît dan
   await ouvrirInfosMagasin(page)
   await expect(associe(page, 'Franchisé 2')).toContainText(`au ${dateCourte(plusAns(entree, 5))} · 1er mandat`)
   await expect(page.getByText('Fin dans moins de 6 mois')).toBeVisible()
+  // 435 (25/11/2026) : la fin de mandat ne remonte plus à l'accueil
   await page.goto('./#/')
-  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
-  if (isMobile) await page.getByRole('tab', { name: /^Contrats/ }).click()
-  const bloc = page.getByRole('region', { name: 'Contrats' })
-  await expect(bloc.getByRole('link', { name: /Franchisé 2 · Nantes Test/ })).toContainText(`Fin le ${dateCourte(plusAns(entree, 5))} · 1er mandat`)
+  await deplierPoint(page)
+  await expect(page.getByRole('region', { name: 'Contrats' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'À traiter' }).getByText(/1er mandat/)).toHaveCount(0)
   expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-accueil-contrats.png` })
 })
 
 test('un mandat saisi l’emporte sur le calcul', async ({ page }) => {

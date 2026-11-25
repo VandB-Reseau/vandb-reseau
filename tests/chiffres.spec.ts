@@ -18,33 +18,6 @@ async function petitesZones(page: import('@playwright/test').Page, selecteur: st
   }).map((e) => (e.textContent || e.getAttribute('aria-label') || '').trim()))
 }
 
-test('l’accueil met en tête les magasins qui décrochent, avec l’appel en retard', async ({ page }, info) => {
-  await seConnecter(page)
-  const bloc = page.getByRole('region', { name: 'À traiter' })
-  await deplierATraiter(page)
-  const lyon = bloc.getByRole('link', { name: /^Lyon Test/ }).first()
-  await expect(lyon).toBeVisible()
-  await expect(lyon).toContainText(/CA −30,0 % vs septembre 2025/)
-  await expect(lyon).toContainText(/appel en retard de \d+ j/)
-  await expect(lyon).toContainText('Décroche')
-  // Les magasins qui décrochent passent en tête, avant ceux à surveiller
-  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Lyon Test.*Décroche$/)
-  // Vague 8 (97A) : les tâches bloquées passent en rouge, avec les urgences ; Nantes se retrouve dans « Suivi »
-  await bloc.getByRole('button', { name: /^Suivi · \d+$/ }).click()
-  const nantes = bloc.getByRole('link', { name: /^Nantes Test.*À surveiller$/ })
-  await expect(nantes).toBeVisible()
-  await expect(nantes).toContainText('À surveiller')
-  await expect(bloc.getByRole('link').nth(0)).toHaveAccessibleName(/^Nantes Test.*À surveiller$/)
-  await bloc.getByRole('button', { name: 'Tout' }).click()
-  await expect(bloc.getByRole('link', { name: /^Annecy Test.*(Décroche|À surveiller)$/ })).toHaveCount(0)
-  // Vague 8 (Joseph, 11/11/2026) : l'actualité en tête de l'accueil, comme un réseau social ; sur téléphone, seule la bande
-  // du point du jour la précède (209A, 15/11/2026)
-  if (page.viewportSize()!.width < 900) await page.getByRole('dialog', { name: 'Mon point du jour' }).getByRole('button', { name: 'Fermer' }).click()
-  await expect(page.getByRole('main').getByRole('region').first()).toHaveAttribute('aria-label', 'Actualités')
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-accueil-chiffres.png` })
-})
-
 test('la fiche magasin montre les chiffres, l’alerte et le graphique', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')

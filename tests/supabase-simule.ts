@@ -1025,31 +1025,22 @@ export async function deplierPoint(page: Page) {
   if ((await bande.getAttribute('aria-expanded')) === 'false') await bande.click()
 }
 
-// Choix 271 : sur PC, les lignes d'un même sujet sont regroupées ; on les déplie toutes pour lire chaque ligne
+// 435 (25/11/2026) : À traiter range ses lignes par famille, cinq par famille ; « Voir les N » déplie chaque famille
 export async function deplierGroupes(page: Page) {
-  const bloc = page.getByRole('region', { name: 'À traiter' })
-  const fermes = bloc.locator('button[aria-expanded="false"]')
-  while (await fermes.count()) await fermes.first().click()
+  const bloc = page.getByRole('region', { name: 'À traiter' }).first()
+  const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
+  while (await voir.count()) await voir.first().click()
 }
 
-// Toute la liste À traiter, sur PC comme sur téléphone : le point ouvert, « Voir les N », chaque sujet déplié
+// Toute la liste À traiter, sur PC comme sur téléphone : le point ouvert, chaque famille dépliée
 export async function toutATraiter(page: Page) {
   await deplierPoint(page)
-  const bloc = page.getByRole('region', { name: 'À traiter' }).first()
-  await bloc.waitFor()
-  const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
-  if (await voir.count()) await voir.click()
+  await page.getByRole('region', { name: 'À traiter' }).first().waitFor()
   await deplierGroupes(page)
 }
 
 export async function deplierATraiter(page: Page) {
-  await deplierPoint(page)
-  const bloc = page.getByRole('region', { name: 'À traiter' })
-  await bloc.waitFor()
-  if (page.viewportSize()!.width >= 900) return
-  const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
-  if (await voir.count()) await voir.click()
-  await deplierGroupes(page)
+  await toutATraiter(page)
 }
 
 // Refonte (Joseph, 09/11/2026, 9A) : sur téléphone, le « + » de l'en-tête ; sur PC, plus de bouton Créer, la recherche
