@@ -23,6 +23,15 @@ changement ; en cas de doute, lui poser la question plutôt que de trancher seul
   d'`app_config`. Une seule liste de tâches pour tout (visites, campagnes, budget, marché extérieur).
 - Date d'ouverture d'un magasin : `store_overrides.open_date` (fiche magasin).
 
+## Carnet et commentaires
+
+- **Carnet** (25/11/2026) : réservé à l'équipe par définition, sans mention « Équipe seule » à l'écran. Page « Carnet »
+  (rubrique Réseau) : toutes les notes du périmètre, tout le réseau pour le Directeur et la Direction, le secteur pour un
+  RR, ses magasins pour un Coach. Les alertes et points à surveiller ouverts en tête ; « Je m'en occupe » met son nom
+  sur la note (champ `prise`) jusqu'à la clôture.
+- **Commentaires du budget** (25/11/2026) : toujours lus par le franchisé, plus de choix « Équipe seule ». Ceux écrits
+  ainsi avant restent cachés au franchisé.
+
 ## Chiffres de vente
 
 - **Source unique du CA : la caisse** (03/11/2026). Le CA mensuel est importé chaque mois depuis l'export de la DSI

@@ -75,7 +75,7 @@ Rubriques de `suivi_magasins` (contrainte `suivi_magasins_cle_check`) :
 | --- | --- | --- |
 | `sante` | Notes nine box datées | `sante_parc` |
 | `sante_sauvegarde` | Copie avant « Effacer toutes les notes » | `sante_parc_sauvegarde` |
-| `notes` | Carnet du magasin (24/11/2026) : notes « en off » de l'équipe, jamais renvoyées au franchisé. Champs JSON sans migration de structure : `ton` (`alerte`, `surveiller`, `positif`, `info`), `themes`, `mentions` (collègues prévenus, cloche de l'app), `quand` (instant), `reponses` (`[{ id, quand, texte, par, mentions }]`), `close` (`{ par, quand }`) | `notes_magasins` |
+| `notes` | Carnet du magasin (24/11/2026) : notes « en off » de l'équipe, jamais renvoyées au franchisé. Champs JSON sans migration de structure : `ton` (`alerte`, `surveiller`, `positif`, `info`), `themes`, `mentions` (collègues prévenus, cloche de l'app), `quand` (instant), `reponses` (`[{ id, quand, texte, par, mentions }]`), `close` (`{ par, quand }`), `prise` (`{ par, quand }`, « Je m'en occupe », 25/11/2026) | `notes_magasins` |
 | `audits` | Résultats consolidés des audits | `audits` |
 | `associes` | Associés et mandats | `associes` |
 | `actions` | Tâches hors visite ; `fil` = `equipe` pour une tâche née dans « Équipe seule », jamais renvoyée au franchisé (0019) ; `budget` = tâche née du plan d'action du budget (type d'alerte, année, responsable, valeur de départ, `abandonnee`, `origine` = numéro de l'ancienne action reprise par 0039) ; `exterieur` = `{ cible, nom }` pour une tâche du plan marché extérieur (0049), seule tâche que le franchisé modifie ou supprime, par `tache_exterieur_franchise` | `actions` |

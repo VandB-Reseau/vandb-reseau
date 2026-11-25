@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Carnet du réseau (Joseph, 25/11/2026). **Sans migration.** Page « Carnet » dans la rubrique Réseau : les notes des
+  carnets du périmètre (tout le réseau pour le Directeur et la Direction, le secteur d'un RR, les magasins d'un Coach),
+  ce qui reste à traiter en tête avec « Je m'en occupe », le fil filtré Tout / À clore / Me concernent, répondre et clore
+  sur place. Plus de mention « Équipe seule » dans le carnet ; les commentaires du budget sont toujours lus par le
+  franchisé (choix « Équipe seule » retiré).
 - Pilotage et Réseau réunis dans ce dépôt, documentation pour un développeur (Joseph, 25/11/2026). **Sans migration à
   passer** : les 38 migrations du schéma `pilotage` sont rangées à l'identique dans `supabase/migrations/pilotage/`
   (historique figé), et toute nouvelle migration prend le numéro suivant de la série unique (prochaine libre 0055).

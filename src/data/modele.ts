@@ -240,6 +240,7 @@ export interface ReponseNote { id: string; quand: string; texte: string; par: st
 export interface NoteMagasin {
   id: string; date: string; texte: string; par: string; visite?: number; appreciation?: Appreciation
   ton?: TonNote; themes?: string[]; mentions?: string[]; quand?: string; reponses?: ReponseNote[]; close?: { par: string; quand: string }
+  prise?: { par: string; quand: string } // « Je m'en occupe » (Joseph, 25/11/2026, carnet du réseau)
 }
 // Vague 7 (81A) : sujets cochés de l'ordre du jour (identifiants de sujetsProposes) et sujets libres
 export interface PreparationVisite { notes: string; heure: string; par: string; maj: string; sujets?: string[]; libres?: string[] }

@@ -52,7 +52,7 @@ test('le carnet : notes en off et comptes rendus dans un même fil, une note ave
   await expect(alerte).toContainText('Posture')
   await expect(alerte).toContainText('Prévenu : Dominique DIRECTION')
   await expect(fil.getByText(/^Compte rendu · .* du 2 oct\. 2026$/)).toBeVisible()
-  await expect(page.getByText('Équipe seule, jamais le franchisé')).toBeVisible()
+  await expect(page.getByText('Équipe seule', { exact: false })).toHaveCount(0)
   await expect(page.getByRole('complementary', { name: 'En bref' })).toContainText('Alerte ouverte')
   await lisible(page, isMobile)
   await page.screenshot({ path: `captures/${info.project.name}-carnet.png`, fullPage: true })
@@ -113,7 +113,62 @@ test('la messagerie quitte les menus ; le « + » propose une note avec son ton'
   await expect(page.getByRole('menuitem', { name: 'Message' })).toHaveCount(0)
   await page.getByRole('menuitem', { name: 'Note' }).click()
   const d = page.getByRole('dialog', { name: 'Nouvelle note' })
-  await expect(d.getByText('Équipe seule, jamais le franchisé')).toBeVisible()
+  await expect(d.getByText(/Équipe seule/)).toHaveCount(0)
   await expect(d.getByRole('group', { name: 'Ton' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
+})
+
+// Carnet du réseau (Joseph, 25/11/2026) : toutes les notes du périmètre sur une page, ce qui reste à traiter en tête,
+// « Je m'en occupe », répondre et clore sur place ; plus de mention « Équipe seule » dans le carnet
+const notesReseau = {
+  ...notes,
+  'Annecy Test': [
+    { id: 'ns', date: '2026-10-20', quand: '2026-10-20T09:00:00.000Z', texte: 'Équipe du magasin fatiguée avant les fêtes.', par: 'Hugo FICTIF', ton: 'surveiller', themes: ['equipe'] },
+  ],
+}
+
+test('la page Carnet réunit les notes du réseau : à traiter en tête, « Je m’en occupe », filtre « Me concernent »', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { config: { notes_magasins: notesReseau }, persister: true, ecritures })
+  if (!isMobile) await page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button', { name: 'Carnet' }).click()
+  else await page.goto('./#/carnet')
+  await expect(page.getByRole('heading', { name: 'Carnet', level: 1 })).toBeVisible()
+  const aTraiter = page.getByRole('list', { name: 'Notes à traiter' })
+  // L'alerte avant le point à surveiller
+  await expect(aTraiter.getByRole('listitem')).toHaveCount(2)
+  await expect(aTraiter.getByRole('listitem').first()).toContainText('Lyon Test')
+  await expect(aTraiter.getByRole('listitem').nth(1)).toContainText('Annecy Test')
+  await expect(aTraiter).toContainText('personne ne s’en occupe')
+  const fil = page.getByRole('list', { name: 'Notes des magasins' })
+  await expect(fil.getByRole('article')).toHaveCount(3)
+  await expect(fil.getByRole('link', { name: 'Carnet de Annecy Test' })).toHaveAttribute('href', /Annecy%20Test\?vue=carnet&note=ns/)
+  await lisible(page, isMobile)
+
+  // Je m'en occupe, puis répondre sur place
+  const alerte = fil.getByRole('article', { name: /^Note alerte/ })
+  await alerte.getByRole('button', { name: 'Je m’en occupe' }).click()
+  await expect(page.getByText('C’est noté : tu t’en occupes.')).toBeVisible()
+  expect(noteEcrite(ecritures, 'remet en cause la redevance')).toMatchObject({ prise: { par: 'Dominique DIRECTION' } })
+  await expect(alerte).toContainText('Tu t’en occupes')
+  await expect(aTraiter.getByRole('listitem').first()).toContainText('tu t’en occupes')
+  await alerte.getByRole('button', { name: 'Répondre' }).click()
+  await alerte.getByRole('textbox', { name: 'Ta réponse' }).fill('Rendez-vous calé lundi.')
+  await alerte.getByRole('button', { name: 'Répondre' }).click()
+  await expect(alerte.getByRole('list', { name: 'Réponses' })).toContainText('Rendez-vous calé lundi.')
+
+  // Me concernent : l'alerte (mentionné, pris en charge) et ma note de septembre, pas celle d'Annecy
+  await page.getByRole('group', { name: 'Filtrer le carnet' }).getByRole('button', { name: /^Me concernent/ }).click()
+  await expect(fil.getByRole('article')).toHaveCount(2)
+  await expect(fil).not.toContainText('Annecy Test')
+  await expect(page.getByText(/Équipe seule/)).toHaveCount(0)
+  await lisible(page, isMobile)
+})
+
+test('un Coach ne lit dans le Carnet que les notes de ses magasins', async ({ page }) => {
+  await seConnecter(page, { config: { notes_magasins: notesReseau }, appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
+  await page.goto('./#/carnet')
+  const fil = page.getByRole('list', { name: 'Notes des magasins' })
+  await expect(fil.getByRole('article')).toHaveCount(2)
+  await expect(fil).toContainText('Lyon Test')
+  await expect(fil).not.toContainText('Annecy Test')
 })

@@ -160,7 +160,7 @@ test('51A : dix entrées dans le menu, Équipe et Paramètres au menu du compte,
   await seConnecter(page)
   await page.goto('./#/')
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Évolution du parc', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes', 'Équipe', 'Paramètres'].map((t) => new RegExp(`^${t}`)))
+  await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Tâches', 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Carnet', 'Évolution du parc', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', 'Animation', 'Demandes', 'Équipe', 'Paramètres'].map((t) => new RegExp(`^${t}`)))
   // 309 (18/11/2026) : Paramètres revient dans le menu latéral
   await nav.getByRole('button', { name: 'Paramètres', exact: true }).click()
   await expect(page).toHaveURL(/#\/parametres\/reglages/)
