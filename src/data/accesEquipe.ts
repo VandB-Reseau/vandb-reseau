@@ -44,3 +44,30 @@ export async function couperAccesEquipe(userId: string) {
 export async function renommerAccesCoach(ancien: string, nouveau: string) {
   await supabase.rpc('renommer_acces_coach', { p_ancien: ancien, p_nouveau: nouveau })
 }
+
+// Accès « Direction » (Joseph, 24/11/2026 ; migration 0054) : un DG ou un autre accès donné lit tout le réseau,
+// n'écrit que dans le carnet des magasins. Ouvert et coupé par le Directeur de réseau.
+export interface AccesDirection { userId: string; email: string; nom: string; derniereConnexion: string }
+
+// null : accès Direction pas encore activés dans la base (migration 0054 non passée)
+export async function listerAccesDirection(): Promise<AccesDirection[] | null> {
+  const { data, error } = await supabase.rpc('liste_acces_direction')
+  if (error || !Array.isArray(data)) return null
+  return (data as Record<string, unknown>[]).map((a) => ({
+    userId: String(a.user_id), email: String(a.email ?? ''), nom: String(a.nom ?? ''),
+    derniereConnexion: String(a.derniere_connexion ?? '').slice(0, 10),
+  }))
+}
+
+export async function ouvrirAccesDirection(email: string, nom: string) {
+  const { error } = await supabase.rpc('ouvrir_acces_direction', { p_email: email.trim(), p_nom: nom.trim() })
+  if (error) {
+    if (error.message?.includes('compte_equipe')) throw new ErreurAccesEquipe('Ce compte est celui d’un Coach ou d’un Responsable Régional : coupe d’abord son accès.')
+    erreur(error)
+  }
+}
+
+export async function couperAccesDirection(userId: string) {
+  const { error } = await supabase.rpc('couper_acces_direction', { p_user: userId })
+  if (error) erreur(error)
+}

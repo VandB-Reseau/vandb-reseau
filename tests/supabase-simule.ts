@@ -10,7 +10,9 @@ export const COMPTE = { email: 'joseph@vandb.test', motDePasse: 'bon-mot-de-pass
 export interface Ecriture { methode: string; table: string; corps: unknown; filtre: string }
 
 // Accès lu dans la base (fonction mon_acces) ; null : fonctions pas encore créées (script non passé)
-export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string }
+export interface AccesSimule { role: string; franchise?: string; magasins?: string[]; coach?: string; rr?: string; direction?: string }
+// Accès Direction (0054) : comptes en lecture ouverts par le Directeur
+export interface AccesDirectionSimule { user_id: string; email: string; nom: string; derniere_connexion?: string | null }
 export interface AccesFranchiseSimule { user_id: string; email: string; franchise: string; magasins: string[]; ouvert_le?: string; derniere_connexion?: string | null }
 export interface AccesEquipeSimule { user_id: string; email: string; role: 'coach' | 'rr'; nom: string; derniere_connexion?: string | null }
 export interface EspaceSimule { plans?: Record<string, Record<string, unknown>[]>; actions?: Record<string, Record<string, unknown>[]>; mots?: Record<string, Record<string, unknown>[]>; visites?: Record<string, unknown>[]; reperes?: unknown; campagnes?: unknown; pratiques?: unknown[] }
@@ -59,7 +61,7 @@ export interface ComptesSimules { equipe?: string[] }
 // Refonte vague 4 (migration 0043) : entretiens RR–Coach et demandes des franchisés ; null = table absente
 // Rapports de l'onglet Pilotage (script 0050_rapports_pilotage.sql) : définitions seules
 export interface RapportSimule { id: number; titre: string; definition: Record<string, unknown>; modele: boolean; partage: boolean; publics?: string[]; auteur: string; role: string; moi?: boolean }
-export interface OptionsSimulation { bandesRepliees?: boolean; entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' | 'principalSature'; rapports?: RapportSimule[] | null }
+export interface OptionsSimulation { bandesRepliees?: boolean; entretiens?: Record<string, unknown>[] | null; demandes?: Record<string, unknown>[] | null; magasinsEnPlus?: (typeof magasinsFictifs)[number][]; chiffresFermes?: boolean; chiffresCaisse?: Record<string, unknown>[] | null; surchargesMagasins?: Record<string, unknown>[]; affectationsEnPlus?: Record<string, unknown>[]; comptes?: ComptesSimules; userMetadata?: Record<string, unknown>; challenges?: ChallengesSimules; propositions?: PropositionsSimulees; questions?: QuestionsSimulees; reunions?: ReunionsSimulees; reactionsPratiques?: ReactionsPratiquesSimulees; lecturesPratiques?: Record<string, { lus: string[]; non_lus: string[] }> | null; reactionsVisites?: ReactionsPratiquesSimulees; communications?: CommunicationSimulee[] | null; messagerie?: MessagerieSimulee | null; perimetreRecu?: PerimetreRecu[]; suiviEnConfig?: boolean; fichesEnConfig?: boolean; acces?: AccesSimule | null; accesFranchises?: AccesFranchiseSimule[]; accesEquipe?: AccesEquipeSimule[]; accesDirection?: AccesDirectionSimule[] | null; reperesEquipe?: unknown; espace?: EspaceSimule; appMetadata?: Record<string, unknown>; panne?: boolean; historique?: Record<string, unknown>[] | null; ecritures?: Ecriture[]; persister?: boolean; config?: Record<string, unknown>; sansPhotos?: boolean; campagnesRegions?: { id: string; rr: string; valeur: unknown }[] | null; preferences?: Record<string, unknown> | null; overpass?: 'panne' | 'vide' | 'principalSature'; rapports?: RapportSimule[] | null }
 // Image PNG de 40 × 40 px, rouge
 export const PNG = 'iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAIAAAADnC86AAAAL0lEQVR4nO3NMQ0AAAgDsMmZfxXIwgQJT5P+zbQvIhaLxWKxWCwWi8VisVgsFt9ZvKLWW/PEN6QAAAAASUVORK5CYII='
 
@@ -313,7 +315,7 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
         l.remis_le = new Date().toISOString()
         return route.fulfill({ json: true })
       }
-      if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
+      if (fn === 'mon_acces') return route.fulfill({ json: { role: acces.role, coach: acces.coach ?? null, rr: acces.rr ?? null, direction: acces.direction ?? null, franchise: acces.franchise ?? null, magasins: acces.magasins ?? [] } })
       if (fn === 'espace_franchise') {
         const apercu = Array.isArray(corps.p_magasins)
         if (apercu ? acces.role !== 'directeur' : acces.role !== 'franchise') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
@@ -728,8 +730,19 @@ export async function simulerSupabase(page: Page, options: OptionsSimulation = {
       }
       // Accès de l'équipe et repères réseau (script 0005_cloisonnement_equipe.sql)
       if (fn === 'reperes_equipe') {
-        if (!['directeur', 'rr', 'coach'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        if (!['directeur', 'rr', 'coach', 'direction'].includes(acces.role)) return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
         return route.fulfill({ json: options.reperesEquipe === undefined ? { mois: '2026-09', indicateurs: { evolution: { n: 40, mediane: -2, quartHaut: 3 }, pmCave: { n: 40, mediane: 38, quartHaut: 42 } } } : options.reperesEquipe })
+      }
+      if (['liste_acces_direction', 'ouvrir_acces_direction', 'couper_acces_direction'].includes(fn)) {
+        if (options.accesDirection === null) return absente()
+        if (acces.role !== 'directeur') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })
+        const dir = options.accesDirection ?? []
+        if (fn === 'liste_acces_direction') return route.fulfill({ json: dir.map((a) => ({ derniere_connexion: null, ...a })) })
+        if (fn === 'ouvrir_acces_direction') {
+          if (corps.p_email === 'coach@exemple.test') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'compte_equipe' } })
+          options.accesDirection = [...dir, { user_id: `u-direction-${dir.length + 1}`, email: String(corps.p_email), nom: String(corps.p_nom) }]
+        } else options.accesDirection = dir.filter((a) => a.user_id !== corps.p_user)
+        return route.fulfill({ json: null })
       }
       const equipe = options.accesEquipe ?? []
       if (['liste_acces_equipe', 'ouvrir_acces_equipe', 'couper_acces_equipe'].includes(fn) && acces.role !== 'directeur') return route.fulfill({ status: 400, json: { code: 'P0001', message: 'acces_refuse' } })

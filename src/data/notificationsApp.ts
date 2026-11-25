@@ -67,7 +67,7 @@ export function notificationsDuReseau(reseau: Reseau, profil: Profil | null): No
   }
   if (profil?.role !== 'franchise' && !reseau.espace) {
     // Carnet du magasin (Joseph, 24/11/2026) : mentions, réponses, et pour le RR et le Directeur les nouvelles alertes
-    for (const e of evenementsCarnet(reseau, moi, depuis, profil?.role === 'rr' || profil?.role === 'directeur')) r.push({ ...e, genre: 'note', quand: e.quand.slice(0, 10) })
+    for (const e of evenementsCarnet(reseau, moi, depuis, profil?.role === 'rr' || profil?.role === 'directeur' || profil?.role === 'direction')) r.push({ ...e, genre: 'note', quand: e.quand.slice(0, 10) })
   }
   if (profil?.role !== 'franchise') {
     // Vague 3 (29A) : un nouveau mois de caisse, un nouveau rapport du mois

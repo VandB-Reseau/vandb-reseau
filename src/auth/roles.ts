@@ -1,6 +1,8 @@
 // Rôles des comptes. Le Directeur de réseau, les Responsables Régionaux et les Coachs forment l'équipe ;
 // un franchisé ne voit que ses magasins ; « aucun » : compte créé mais pas encore ouvert.
-export type Role = 'directeur' | 'rr' | 'coach' | 'franchise' | 'aucun'
+// « direction » (24/11/2026) : un DG ou un autre accès donné par le Directeur, lit tout le réseau comme lui, n'écrit
+// que dans le carnet des magasins (migrations réseau 0054 et pilotage 0038).
+export type Role = 'directeur' | 'rr' | 'coach' | 'franchise' | 'aucun' | 'direction'
 
 export interface Profil {
   id: string
@@ -17,6 +19,9 @@ export const roleLibelle: Record<Role, string> = {
   coach: 'Coach',
   franchise: 'Franchisé',
   aucun: 'Accès non ouvert',
+  direction: 'Direction',
 }
 
-export const estEquipe = (p: Profil | null) => !!p && ['directeur', 'rr', 'coach'].includes(p.role)
+export const estEquipe = (p: Profil | null) => !!p && ['directeur', 'rr', 'coach', 'direction'].includes(p.role)
+// Compte Direction : lecture de tout le réseau, écriture dans le carnet seulement
+export const estDirection = (p: Profil | null) => p?.role === 'direction'

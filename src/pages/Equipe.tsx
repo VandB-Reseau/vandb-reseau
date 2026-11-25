@@ -1,5 +1,9 @@
+import Snackbar from '@mui/material/Snackbar'
+import { useAuth } from '../auth/AuthContext'
+import { useDroits } from '../auth/Droits'
+import { SectionAccesDirection } from '../components/AccesEquipe'
 import { styleBloc, styleEnteteBloc } from '../components/Section'
-import { type ReactElement, type ReactNode } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { Link as RouterLink, Navigate, useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -338,6 +342,20 @@ const vuesPersonnes: { vue: Vue; libelle: string }[] = [
 ]
 const ongletDe = (v: Vue): Onglet => (v === 'organisation' || v === 'revue' ? v : 'personnes')
 
+// Accès Direction (24/11/2026) : ouverts et coupés par le Directeur de réseau, sous l'organisation
+function AccesDirectionEquipe() {
+  const { profil } = useAuth()
+  const { referentiels } = useDroits()
+  const [message, setMessage] = useState('')
+  if (profil?.role !== 'directeur' || !referentiels) return null
+  return (
+    <Box sx={{ mt: 3 }}>
+      <SectionAccesDirection signaler={setMessage} />
+      <Snackbar open={!!message} autoHideDuration={4000} onClose={() => setMessage('')} message={message} />
+    </Box>
+  )
+}
+
 export function Equipe() {
   const [params, setParams] = useSearchParams()
   const demandee = params.get('vue')
@@ -361,6 +379,7 @@ export function Equipe() {
           {vue === 'collaborateurs' || vue === 'franchises' ? <VuePersonnes key={vue} perimetre={vue} reseau={reseau} />
             : vue === 'revue' ? <RevueRR reseau={reseau} nom="réseau" magasins={reseau.magasins} parRR />
             : vue === 'portefeuilles' ? <VuePortefeuilles reseau={reseau} /> : vue === 'postes' ? <VuePostes reseau={reseau} /> : vue === 'anciens' ? <VueAnciens reseau={reseau} /> : <VueOrganisation reseau={reseau} />}
+          {vue === 'organisation' && <AccesDirectionEquipe />}
         </>
       )}
     </AvecReseau>

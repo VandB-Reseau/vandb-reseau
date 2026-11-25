@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Accès « Direction » en lecture (Joseph, 24/11/2026, lot 2 après le carnet). **Base : réseau 0054
+  (`0054_acces_direction.sql`) et pilotage 0038 (`0038_acces_direction.sql`, dépôt du pilotage), dans l'ordre qu'on veut,
+  après 0053.** Un DG ou un autre accès donné par le Directeur (Équipe › Organisation › « Accès Direction ») lit tout le
+  réseau comme le Directeur, carnets et budgets compris, et n'écrit que dans le carnet des magasins. Pas de réglages,
+  pas de « + », pas de messagerie privée ; jamais vu du franchisé.
 - Carnet du magasin et commentaires du budget en marge (Joseph, 24/11/2026, proposition A). **Base : pilotage 0037
   (`0037_commentaires_equipe.sql`, dépôt du pilotage) PUIS réseau 0053 (`0053_notes_equipe.sql`).** Onglet « Carnet »
   sur la fiche : notes en off de l'équipe (ton Alerte, À surveiller, Positif, Info ; thèmes ; collègues prévenus ;
