@@ -14,7 +14,7 @@ import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import EventNoteOutlined from '@mui/icons-material/EventNoteOutlined'
 import { RevueRR } from '../components/RevueRR'
 import { ContenuOnglet, Onglets, type Rubrique } from '../components/Onglets'
-import { BlocPortefeuille, ProfilPersonne } from '../components/Portefeuille'
+import { BlocPortefeuille, ProfilPersonne, rond } from '../components/Portefeuille'
 import { portefeuilleDe } from '../data/portefeuille'
 import { lienPersonne } from '../data/messagerie'
 import Box from '@mui/material/Box'
@@ -23,6 +23,12 @@ import Link from '@mui/material/Link'
 import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
 import EditOutlined from '@mui/icons-material/EditOutlined'
+import InfoOutlined from '@mui/icons-material/InfoOutlined'
+import CloseOutlined from '@mui/icons-material/CloseOutlined'
+import Drawer from '@mui/material/Drawer'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import { echelle } from '../theme/theme'
 import PersonOutlineOutlined from '@mui/icons-material/PersonOutlineOutlined'
 import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
@@ -45,7 +51,7 @@ import { anneeDe, suiviRythme } from '../data/visites'
 import { actionsDes } from '../data/actions'
 
 // Bloc « Fiche personnelle » commun aux quatre rôles
-export function SectionFichePersonnelle({ reseau, r, action }: { reseau: Reseau; r: RefPersonne; action?: ReactNode }) {
+export function SectionFichePersonnelle({ reseau, r, action, titre = 'Fiche personnelle' }: { reseau: Reseau; r: RefPersonne; action?: ReactNode; titre?: string }) {
   const f = fichePersonne(reseau, r)
   const age = ageDepuis(f.naissance, reseau.jour)
   const anciennete = ageDepuis(f.arrivee, reseau.jour)
@@ -65,10 +71,32 @@ export function SectionFichePersonnelle({ reseau, r, action }: { reseau: Reseau;
   const vides = champs.filter(([, v]) => !v).length
   return (
     // 315 (18/11/2026) : les champs vides ne prennent plus une ligne chacun, ils se comptent en une seule
-    <Section titre="Fiche personnelle" action={action}>
+    <Section titre={titre} action={action}>
       {champs.map(([libelle, valeur]) => <Ligne key={libelle} libelle={libelle} compacte>{valeur}</Ligne>)}
       {vides > 0 && <Typography variant="body2" color="text.secondary" sx={{ pt: 1 }}>{vides} information{vides > 1 ? 's' : ''} à compléter</Typography>}
     </Section>
+  )
+}
+
+// Joseph (25/11/2026) : sur la fiche d'un Coach ou d'un RR, la fiche personnelle s'ouvre par le picto (i) de l'en-tête,
+// dans un panneau à droite, comme « Infos du magasin »
+export function BoutonFichePersonnelle({ reseau, r }: { reseau: Reseau; r: RefPersonne }) {
+  const [ouvert, setOuvert] = useState(false)
+  const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
+  return (
+    <>
+      {surPC
+        ? <Button variant="outlined" startIcon={<InfoOutlined />} onClick={() => setOuvert(true)} sx={{ minHeight: 48, borderRadius: 999, whiteSpace: 'nowrap', ml: 0.5 }}>Fiche personnelle</Button>
+        : <Tooltip title="Fiche personnelle"><IconButton onClick={() => setOuvert(true)} aria-label="Fiche personnelle" sx={rond}><InfoOutlined /></IconButton></Tooltip>}
+      <Drawer anchor="right" open={ouvert} onClose={() => setOuvert(false)} sx={{ zIndex: (t) => t.zIndex.modal }}
+        slotProps={{ paper: { role: 'dialog', 'aria-label': 'Fiche personnelle', sx: { width: { xs: '100%', sm: 440 }, bgcolor: 'background.default' } } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+          <Typography component="h2" sx={{ fontWeight: 700, fontSize: echelle.section, mr: 'auto' }}>Fiche personnelle</Typography>
+          <IconButton onClick={() => setOuvert(false)} aria-label="Fermer" sx={{ width: 48, height: 48 }}><CloseOutlined /></IconButton>
+        </Box>
+        <Box sx={{ p: 2 }}><SectionFichePersonnelle reseau={reseau} r={r} titre="Informations" /></Box>
+      </Drawer>
+    </>
   )
 }
 
@@ -145,6 +173,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
           { valeur: magasins.length, libelle: magasins.length > 1 ? 'magasins' : 'magasin' },
           { valeur: p.visitesFaites, libelle: `visites ${reseau.jour.slice(0, 4)}` },
         ]}
+        icones={<BoutonFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />}
         telephone={fichePersonne(reseau, { type: 'rr', cle: id }).telephone || rr.telephone} lienMessage={lienPersonne(`rr:${id}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesRR} libelle={`Rubriques de ${rr.nom}`} fiche />
       <ContenuOnglet>
@@ -152,7 +181,6 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, alignItems: 'start' }}>
             <EnsembleEquipe reseau={reseau} magasins={magasins} rythme={rythme} p={p} carte={<BlocPortefeuille reseau={reseau} p={p} />} />
             <Box sx={{ display: 'grid', gap: 2 }}>
-              <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
               {!surPC && referentiels && <BoutonDepart bouton reseau={reseau} personne={{ type: 'rr', cle: id }} nom={rr.nom} signaler={setMessage} />}
               {referentiels && <SectionAccesEquipe role="rr" cle={id} nom={rr.nom} signaler={setMessage} />}
             </Box>

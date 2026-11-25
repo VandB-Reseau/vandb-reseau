@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche d'un Coach ou d'un Responsable Régional : la fiche personnelle quitte la Vue d'ensemble et s'ouvre par le picto (i)
+  de l'en-tête (« Fiche personnelle » sur PC), dans un panneau à droite, comme « Infos du magasin » (Joseph, 25/11/2026).
+  Sans migration.
 - Carnet du réseau (Joseph, 25/11/2026). **Sans migration.** Page « Carnet » dans la rubrique Réseau : les notes des
   carnets du périmètre (tout le réseau pour le Directeur et la Direction, le secteur d'un RR, les magasins d'un Coach),
   ce qui reste à traiter en tête avec « Je m'en occupe », le fil filtré Tout / À clore / Me concernent, répondre et clore
