@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { deplierPoint, ouvrirInfosMagasin, ouvrirOnglet, revoirTache, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
+import { toutATraiter, ouvrirInfosMagasin, ouvrirOnglet, revoirTache, saisirVisiteNonPrevue, seConnecter, textesTropPetits, type Ecriture } from './supabase-simule'
 import { magasinsFictifs } from './donnees-fictives'
 
 test.beforeEach(async ({ page }) => {
@@ -12,12 +12,7 @@ test.afterEach(async ({ page }) => {
 })
 
 // Déplie toute la liste « À traiter » de l'accueil quand elle dépasse cinq lignes
-const voirTout = async (page: Page) => {
-  const bouton = page.getByRole('region', { name: 'À traiter' }).getByRole('button', { name: /^Voir les \d+$/ })
-  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
-  await page.getByRole('region', { name: 'À traiter' }).waitFor()
-  if (await bouton.count()) await bouton.click()
-}
+const voirTout = (page: Page) => toutATraiter(page)
 
 const derniere = (ecritures: Ecriture[], cle: string) => {
   const e = ecritures.filter((x) => x.table === 'app_config' && ((x.corps as { key?: string }).key === cle || x.filtre.includes(`key=eq.${cle}`))).at(-1)
@@ -132,18 +127,10 @@ test('un magasin intégré associe V and B à des particuliers', async ({ page }
   expect(ecritures.filter((e) => e.table === 'store_overrides')).toEqual([])
 })
 
-test('les mandats à renouveler remontent à l’accueil et sur la fiche du franchisé', async ({ page, isMobile }) => {
+// 435 (25/11/2026) : les fins de mandat ne remontent plus à l'accueil, elles restent sur la fiche du franchisé
+test('les mandats à renouveler apparaissent sur la fiche du franchisé', async ({ page }) => {
   const associes = { 'Brest Test': [{ id: 'x1', nom: 'Franchisé 11', entree: '', sortie: '', mandats: [{ debut: '2016-01-01', fin: '2026-06-30' }] }] }
   await seConnecter(page, { config: { associes } })
-  await page.goto('./#/')
-  await deplierPoint(page) // 278 : sur téléphone, le point du jour s'ouvre par la barre du haut
-  if (isMobile) await page.getByRole('tab', { name: /^Contrats/ }).click()
-  const bloc = page.getByRole('region', { name: 'Contrats' })
-  const voir = bloc.getByRole('button', { name: /^Voir les \d+$/ })
-  if (await voir.count()) await voir.click()
-  const mandat = bloc.getByRole('link', { name: /^Franchisé 11 · Brest Test/ })
-  await expect(mandat).toContainText('Fin le 30 juin 2026 · 1er mandat')
-  await expect(mandat).toContainText('Mandat échu')
   await page.goto('./#/equipe/franchise/Franchis%C3%A9%2011')
   await expect(page.getByRole('heading', { name: 'Mandats' })).toBeVisible()
   await expect(page.getByText('Mandat du 1 janv. 2016 au 30 juin 2026')).toBeVisible()
@@ -172,8 +159,9 @@ test('l’accueil du Directeur montre tout le réseau, avec son titre et sans ch
   await expect(page.getByRole('combobox', { name: 'Vue' })).toHaveCount(0)
   const aTraiter = page.getByRole('region', { name: 'À traiter' })
   await voirTout(page)
-  await expect(aTraiter.getByText(/^(Poste de Coach à pourvoir|Charge \d+ sur \d+)$/).first()).toBeVisible()
-  await expect(aTraiter).toContainText('Refaire la vitrine')
+  // 436 (25/11/2026) : une ligne par personne pour l'équipe ; plus de charge ni de poste à pourvoir ici
+  await expect(aTraiter.getByRole('region', { name: 'Magasins à visiter' })).toContainText(/\d+ magasins? pas vus?/)
+  await expect(aTraiter).not.toContainText(/Poste de Coach à pourvoir|Charge \d+ sur \d+/)
   expect(await textesTropPetits(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-accueil.png`, fullPage: !isMobile })
 })

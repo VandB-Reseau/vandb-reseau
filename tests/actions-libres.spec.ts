@@ -77,7 +77,7 @@ test('ajouter une action hors visite, la cocher faite, puis la modifier et la su
 test('une action hors visite se coche faite pendant la visite suivante et apparaît à l’accueil', async ({ page }) => {
   const ecritures: Ecriture[] = []
   const actions = { 'Brest Test': [{ id: 'l1', action: 'Commander la nouvelle PLV', porteur: 'Noé MODELE', echeance: '2026-10-01', creeLe: '2026-09-25' }] }
-  await seConnecter(page, { ecritures, config: { actions } })
+  await seConnecter(page, { ecritures, config: { actions }, appMetadata: { role: 'coach', coach: 'Noé MODELE' } })
   await page.goto('./#/')
   await deplierATraiter(page)
   await expect(page.getByRole('region', { name: 'À traiter' }).getByRole('link', { name: /^Commander la nouvelle PLV/ })).toBeVisible()

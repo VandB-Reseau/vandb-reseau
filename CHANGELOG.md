@@ -9,6 +9,12 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- « Mon point du jour » et « Aujourd'hui » recentrés sur l'action terrain (choix 429 à 436, Joseph, 25/11/2026).
+  **Sans migration.** Plus de chiffre d'affaires, de magasins qui décrochent, de santé du parc ni de période Mois/Cumul
+  sur l'Accueil. Ma journée (aujourd'hui et demain, Faite, Reporter), puis quatre familles de cinq lignes : comptes
+  rendus, tâches, carnet (avec « Je m'en occupe »), magasins à visiter. Le RR et le Directeur voient une ligne par
+  personne pour les retards de leur équipe. Intégrations, demandes, contrats, campagnes et entretiens restent dans leurs
+  pages.
 - Fiche d'un Coach ou d'un Responsable Régional : la fiche personnelle quitte la Vue d'ensemble et s'ouvre par le picto (i)
   de l'en-tête (« Fiche personnelle » sur PC), dans un panneau à droite, comme « Infos du magasin » (Joseph, 25/11/2026).
   Sans migration.

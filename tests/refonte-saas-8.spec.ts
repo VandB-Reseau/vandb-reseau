@@ -32,13 +32,13 @@ test('l’actualité au premier plan de l’accueil, comme un réseau social', a
   if (!isMobile) await expect(fil.getByRole('button', { name: 'Communication' })).toBeVisible()
   if (isMobile) {
     // Téléphone : les indicateurs s'ouvrent par le picto « Mon point du jour »
-    await expect(page.getByRole('region', { name: 'Pilotage' })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'À traiter' })).toHaveCount(0)
     await deplierPoint(page)
-    await expect(page.getByRole('region', { name: 'Pilotage' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'À traiter' })).toBeVisible()
     await page.getByRole('dialog', { name: 'Mon point du jour' }).getByRole('button', { name: 'Fermer' }).click()
   } else {
-    // PC : le fil à gauche, les indicateurs en tête de la colonne Aujourd'hui
-    const [f, ind] = await Promise.all([fil.boundingBox(), page.getByRole('region', { name: 'Pilotage' }).boundingBox()])
+    // PC : le fil à gauche, la colonne Aujourd'hui à droite (plus d'indicateurs chiffrés depuis le 25/11/2026)
+    const [f, ind] = await Promise.all([fil.boundingBox(), page.getByRole('complementary', { name: 'Aujourd’hui' }).boundingBox()])
     expect(ind!.x).toBeGreaterThan(f!.x + f!.width)
     expect(f!.y).toBeLessThanOrEqual(ind!.y + 16)
   }

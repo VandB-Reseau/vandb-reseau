@@ -13,23 +13,6 @@ test.afterEach(async ({ page }) => {
   expect((page as unknown as { erreurs: string[] }).erreurs).toEqual([])
 })
 
-test('« À traiter » : les urgences d’abord, des puces pour filtrer', async ({ page, isMobile }, info) => {
-  await seConnecter(page)
-  const bloc = page.getByRole('region', { name: 'À traiter' })
-  await deplierATraiter(page)
-  const puces = bloc.getByRole('group', { name: 'Éléments à traiter affichés' })
-  await expect(puces.getByRole('button').first()).toHaveText('Tout')
-  await expect(puces.getByRole('button', { name: /^Urgent · \d+$/ })).toBeVisible()
-  // La première ligne porte une pastille rouge
-  await expect(bloc.getByRole('link').first()).toContainText(/Décroche|En retard|Redressement/)
-  await puces.getByRole('button', { name: /^À voir · \d+$/ }).click()
-  await expect(puces.getByRole('button', { name: /^À voir/ })).toHaveAttribute('aria-pressed', 'true')
-  for (const l of await bloc.getByRole('link').all()) await expect(l).toContainText(/pas vu depuis|jamais visité/)
-  for (const b of await puces.getByRole('button').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(48)
-  expect(await textesTropPetits(page)).toEqual([])
-  await page.screenshot({ path: `captures/${info.project.name}-a-traiter-filtres.png`, fullPage: !isMobile })
-})
-
 test('Magasins : la dernière visite à droite, le rouge réservé au décrochage', async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#/magasins')

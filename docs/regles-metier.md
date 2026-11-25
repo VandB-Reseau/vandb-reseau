@@ -87,5 +87,13 @@ changement ; en cas de doute, lui poser la question plutôt que de trancher seul
 - Aucune erreur technique à l'écran : un message humain, un état vide qui propose l'action.
 - Couleurs et polices de la charte V and B (`src/theme/theme.ts`), icônes `@mui/icons-material`, pas d'emojis.
 - Statuts : 4 tons (rouge Agir, orange Surveiller, vert Bon, gris Neutre) et un lexique fermé (`LEXIQUE_STATUTS`).
+- L'action terrain d'abord (Joseph, 25/11/2026) : ce qui se suit au quotidien, ce sont les visites, les comptes rendus,
+  les tâches et le carnet. Le chiffre d'affaires, le budget (une fois par an) et le prévisionnel relèvent du pilotage :
+  ils restent dans leurs pages et ne remontent ni dans « Mon point du jour » ni dans la colonne « Aujourd'hui ».
+- « Mon point du jour » et « Aujourd'hui » (choix 429 à 436) : ma journée (visites d'aujourd'hui et de demain), puis
+  comptes rendus (visites jamais closes, comptes rendus à écrire, signatures), tâches (en retard, bloquées, dues dans la
+  semaine), carnet (alertes que personne n'a prises, mentions sans réponse), magasins à visiter (à préparer, pas vus
+  au-delà du délai de leur case). Cinq lignes par famille, une famille vide n'apparaît pas. Le Coach voit chaque ligne ;
+  le RR et le Directeur voient les leurs une par une, et une ligne par personne pour celles des autres.
 
 Le détail des règles d'interface et de code est dans [CLAUDE.md](../CLAUDE.md) et [architecture.md](architecture.md).
