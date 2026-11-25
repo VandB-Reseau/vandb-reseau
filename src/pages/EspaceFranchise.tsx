@@ -73,7 +73,7 @@ import { SondagesARepondre } from '../components/Questions'
 import { SectionChallengesFranchise } from '../components/Challenges'
 import { dateCourte, dateLongue, lienFiche, telLien } from '../lib/format'
 import { actionsDes, echeanceDate, enRetard } from '../data/actions'
-import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, moisPrecedent, type ChampChiffre } from '../data/chiffres'
+import { analyser, caDe, chiffresDuMagasin, decalerMois, dernierAudit, estVisite, typesContact, formatEuros, formatKEuros, formatPourcent, formatValeur, libelleAudit, libelleMois, moisPrecedent, type ChampChiffre } from '../data/chiffres'
 import { campagnesDuMagasin, executionMagasin, libellesExecution, magasinsConcernes, phase, libellesPhase, type Execution } from '../data/campagnes'
 import { associesEnPlace, mandatActuel } from '../data/associes'
 import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
@@ -327,7 +327,7 @@ function SectionVisitesAudits({ reseau, magasins }: { reseau: Reseau; magasins: 
       <CarteLignes>
         {magasins.flatMap((m) => {
           const vs = visitesDuMagasin(reseau, m.nom)
-          const faite = vs.find((v) => visiteFaite(v, reseau.jour))
+          const faite = vs.find((v) => visiteFaite(v, reseau.jour) && estVisite(v))
           const prevue = vs.filter((v) => v.date > reseau.jour).at(-1)
           const audits = (['hygiene', 'excellence'] as const).map((t) => [t, dernierAudit(reseau, m.nom, t)] as const)
           const ou = magasins.length > 1 ? ` · ${m.nom}` : ''
@@ -718,13 +718,16 @@ function OngletVisites({ reseau, m }: { reseau: Reseau; m: Magasin }) {
             {vs.map((v) => {
               const faites = v.plan.filter((x) => x.faite).length
               const avenir = !!v.prevue || v.date > reseau.jour
+              // Compte rendu d'échange (appel, point ; Joseph 25/11/2026) : lu sur place, sans PDF
+              const echange = typesContact.includes(v.type)
               return (
                 <Box key={v.id ?? v.date}>
                   <LigneCompacte avatar={<Initiales nom={v.type} icone={avenir ? <EventAvailableOutlined /> : <EventNoteOutlined />} />}
                     titre={`${dateCourte(v.date)} · ${libelleTypeVisite(v.type)}`}
                     detail={[nomsVisiteurs(v), v.plan.length > 0 && `${v.plan.length} tâche${v.plan.length > 1 ? 's' : ''} au plan · ${faites} faite${faites > 1 ? 's' : ''}`].filter(Boolean).join(' · ')}
                     fin={avenir ? <Pastille ton="gris">À venir</Pastille> : undefined}
-                    actions={!avenir && v.id !== null ? <Tooltip title="Compte rendu"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`} sx={{ width: 48, height: 48 }}><PictureAsPdfOutlined /></IconButton></Tooltip> : undefined} />
+                    actions={!avenir && !echange && v.id !== null ? <Tooltip title="Compte rendu"><IconButton component={RouterLink} to={lienCompteRendu(v)} aria-label={`Compte rendu du ${dateCourte(v.date)}`} sx={{ width: 48, height: 48 }}><PictureAsPdfOutlined /></IconButton></Tooltip> : undefined} />
+                  {echange && v.notes.trim() && <Typography sx={{ px: 2, pb: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{v.notes}</Typography>}
                   {!!v.photos?.length && <Box sx={{ px: 2, pb: 1.5 }}><GrillePhotos photos={v.photos} /></Box>}
                 </Box>
               )

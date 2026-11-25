@@ -38,7 +38,8 @@ changement ; en cas de doute, lui poser la question plutôt que de trancher seul
   étaient rangées au même endroit : rien à reprendre.
 - **Compte rendu d'échange** (25/11/2026) : « Appel » ouvre une petite fenêtre (Appel ou Point, date, ce qui s'est dit),
   sans titre, sans signature, sans envoi. Rangé comme une visite de type `appel` ou `point`, lu dans le carnet et
-  l'historique du magasin ; jamais renvoyé au franchisé (types écartés par `espace_franchise()`).
+  l'historique du magasin. Accessible au franchisé comme un compte rendu de visite, lu sur place sans PDF (Joseph,
+  25/11/2026, migration 0055) ; ni notification, ni J'aime, ni commentaire.
 - **Commentaires du budget** (25/11/2026) : toujours lus par le franchisé, plus de choix « Équipe seule ». Ceux écrits
   ainsi avant restent cachés au franchisé.
 

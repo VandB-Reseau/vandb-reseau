@@ -15,7 +15,8 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
   magasin » remplace les remarques internes : 2 ou 3 notes ajoutées d'affilée, liées à la visite.
   Plus de « Note » à la volée dans le « + » ni la recherche : « Note au carnet » ouvre le carnet prêt à écrire (note
   gardée sur l'appareil sans réseau). « Appel » devient un compte rendu d'échange léger (Appel ou Point, date, texte ;
-  ni signature ni envoi), lu dans le carnet.
+  ni signature ni envoi), lu dans le carnet et par le franchisé dans son espace, sans PDF.
+  **Migration à passer : `0055_echanges_franchise.sql`** (appels et points dans `espace_franchise()`).
 - Fiche d'un Coach ou d'un Responsable Régional : la fiche personnelle quitte la Vue d'ensemble et s'ouvre par le picto (i)
   de l'en-tête (« Fiche personnelle » sur PC), dans un panneau à droite, comme « Infos du magasin » (Joseph, 25/11/2026).
   Sans migration.

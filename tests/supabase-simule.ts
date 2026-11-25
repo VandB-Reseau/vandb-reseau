@@ -904,7 +904,7 @@ function espaceSimule(franchise: string, magasins: string[], e: EspaceSimule, en
     store_overrides: [],
     reassigns: affectationsFictives.filter((a) => a && dans(a.store)),
     cs_overrides: coachsFictifs.filter((c) => coachs.has(c.cs_name) && !c.tech).map((c) => ({ cs_name: c.cs_name, tel: c.tel, email: c.email })),
-    visits: [...visitesFictives, ...(e.visites ?? [])].filter((v) => dans(v.store) && !['appel', 'point'].includes(String(v.type))),
+    visits: [...visitesFictives, ...(e.visites ?? [])].filter((v) => dans(v.store)), // appels et points compris depuis 0055
     store_finance: chiffresFictifs.filter((c) => dans(c.store_name)),
     reperes: e.reperes === undefined ? { mois: '2026-09', indicateurs: { evolution: { n: 40, mediane: -2, quartHaut: 3 }, pmCave: { n: 40, mediane: 38, quartHaut: 42 }, fluxBar: { n: 40, mediane: 2500, quartHaut: 3000 } } } : e.reperes,
   }

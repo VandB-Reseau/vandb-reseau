@@ -1333,3 +1333,18 @@ SELECT pg_temp.attendre('Direction : un accès coupé ne lit plus rien', (SELECT
 RESET ROLE;
 RESET request.jwt.claim.sub;
 DELETE FROM public.suivi_magasins WHERE store_name = 'Nice' AND cle = 'notes';
+
+-- Comptes rendus d'échange lus par le franchisé (0055, Joseph 25/11/2026) : ses appels et points, jamais ceux d'un
+-- autre magasin ; toujours ni réaction ni carnet
+\ir ../migrations/0055_echanges_franchise.sql
+SELECT pg_temp.attendre('Journal : 0055 notée', (SELECT count(*) FROM public.journal_migrations WHERE numero = '0055'), 1);
+INSERT INTO public.visits (store, visit_date, type, notes) VALUES ('Nice', current_date, 'appel', 'Appel Nice confidentiel');
+UPDATE public.visits SET notes = 'Appel de Lille partagé' WHERE id = :appel;
+SET ROLE authenticated;
+SET request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000f';
+SELECT pg_temp.attendre('Échange : le franchisé lit l''appel de son magasin', (position('Appel de Lille partagé' IN public.espace_franchise()::text) > 0)::int, 1);
+SELECT pg_temp.attendre('Échange : jamais l''appel d''un autre magasin', position('Appel Nice confidentiel' IN public.espace_franchise()::text), 0);
+SELECT pg_temp.attendre('Échange : toujours pas de réaction sur un appel', pg_temp.refuse('SELECT public.basculer_pouce_visite(' || :appel || ')'), 1);
+RESET ROLE;
+RESET request.jwt.claim.sub;
+DELETE FROM public.visits WHERE notes = 'Appel Nice confidentiel';

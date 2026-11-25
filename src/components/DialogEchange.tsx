@@ -1,7 +1,7 @@
 // Compte rendu d'échange (Joseph, 25/11/2026) : après un appel ou un point, quelques lignes rangées dans le dossier du
-// magasin, à côté des comptes rendus de visite (carnet, historique). Sans titre, sans signature, rien n'est envoyé : un
-// appel ou un point n'est jamais renvoyé au franchisé (espace_franchise écarte ces types). Enregistré comme une visite de
-// type « appel » ou « point », sans migration.
+// magasin, à côté des comptes rendus de visite (carnet, historique). Sans titre, sans signature, rien n'est envoyé ;
+// accessible au franchisé dans son espace comme un compte rendu, sans PDF (migration 0055). Enregistré comme une visite
+// de type « appel » ou « point ».
 import { useState } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import TextField from '@mui/material/TextField'

@@ -9,7 +9,7 @@ changement, numérotée dans l'ordre où elle s'applique. Carte du schéma : [do
 
 | Dossier | Contenu | Journal en base |
 | --- | --- | --- |
-| `migrations/NNNN_*.sql` | Série de l'app, 0001 à 0054, puis **toute** nouvelle migration, quel que soit le schéma touché (`public` ou `pilotage`) : prochaine libre **0055** | `public.journal_migrations` |
+| `migrations/NNNN_*.sql` | Série de l'app, 0001 à 0055, puis **toute** nouvelle migration, quel que soit le schéma touché (`public` ou `pilotage`) : prochaine libre **0056** | `public.journal_migrations` |
 | `migrations/pilotage/NNNN_*.sql` | Historique du schéma `pilotage` (0001 à 0038), venu du dépôt `vandb-pilotage` à l'identique ; déjà passé en ligne, **figé** : on n'y ajoute plus rien | `pilotage.journal_migrations` |
 
 Les deux séries ont des numéros communs (0001 à 0038) : on désigne une migration historique du pilotage par
@@ -72,6 +72,7 @@ pilotage 0001 à 0038, puis app 0039 et suivantes (0039 et 0040 lisent le schém
 | `0052_ajout_coach` | Ajout d'un Coach réparé (numéro automatique de `cs_overrides`) | 18/11/2026 |
 | `0053_notes_equipe` | Carnet du magasin et commentaires du budget « équipe seule » | 24/11/2026 |
 | `0054_acces_direction` | Accès « Direction » en lecture (avec pilotage 0038) | 24/11/2026 |
+| `0055_echanges_franchise` | Comptes rendus d'échange (appels, points) lus par le franchisé dans `espace_franchise()` | 25/11/2026 |
 
 ## Historique du pilotage (`migrations/pilotage/`)
 

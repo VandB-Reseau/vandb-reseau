@@ -18,7 +18,8 @@ Mis à jour le 26/10/2026 (migration `0038`).
   - un Coach ou un RR lit les référentiels et l'agenda de tout le réseau, mais ne lit et n'écrit les visites,
     chiffres et suivi que de ses magasins (`magasins_visibles()`, tenu par `perimetre_equipe`) ;
   - un franchisé ne lit **aucune table** : tout passe par des fonctions (`espace_franchise()`, messagerie,
-    communications, actions), qui vérifient ses magasins dans `acces_franchises`.
+    communications, actions), qui vérifient ses magasins dans `acces_franchises`. `espace_franchise()` lui renvoie ses
+    visites, appels et points compris (0055), jamais le carnet (rubrique `notes`).
 - **Tables sociales fermées.** Messages, communications, J'aime et commentaires n'ont aucun droit direct
   (`REVOKE ALL`) : seules leurs fonctions les lisent et les écrivent, et posent elles-mêmes l'auteur.
 - **Un magasin est identifié par son nom** (`store`, `store_name`), un Coach par son nom (`cs`, `coach`),

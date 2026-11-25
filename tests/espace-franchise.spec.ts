@@ -17,6 +17,8 @@ const espace = {
     { id: 50, store: 'Annecy Test', visit_date: '2026-09-15', type: 'terrain', visitor: 'Hugo FICTIF', signed_required: false, docs: [], notes: '', sections: ['', '', 'Vitrine propre.', '', '', 'Bon mois.'],
       action_plan: [{ id: 'b1', action: 'Lancer une dégustation', porteur: 'Paul MULTI', echeance: '2026-09-30' }, { id: 'b2', action: 'Former au conseil', porteur: 'Hugo FICTIF', echeance: '2099-01-31' }] },
     { id: 51, store: 'Annecy Test', visit_date: '2099-01-10', type: 'terrain', visitor: 'Hugo FICTIF', signed_required: false, docs: [] },
+    // Compte rendu d'échange (0055, 25/11/2026) : lu par le franchisé comme un compte rendu, sans PDF
+    { id: 52, store: 'Annecy Test', visit_date: '2026-10-20', type: 'appel', visitor: 'Hugo FICTIF', signed_required: false, docs: [], notes: 'Dégustation du samedi relancée, on refait le point fin novembre.' },
   ],
   campagnes: { liste: [{ id: 'noel', nom: 'Noël', debut: '2020-01-01', fin: '2099-12-31', points: [{ id: 'p1', libelle: 'Vitrine de Noël' }, { id: 'p2', libelle: 'Coffrets en tête de gondole' }], perimetre: 'tous', magasins: [] }],
     constats: { noel: { 'Annecy Test': { p1: { fait: true, date: '2026-10-01', par: 'Hugo FICTIF' } } } } },
@@ -108,6 +110,8 @@ test('la fiche magasin du franchisé est en lecture seule, avec le compte rendu 
   await ouvrirOnglet(page, 'Historique', onglets)
   await expect(page.getByText('À venir', { exact: true })).toBeVisible()
   await expect(page.getByText('2 tâches au plan · 0 faite')).toBeVisible()
+  await expect(page.getByText('Dégustation du samedi relancée, on refait le point fin novembre.')).toBeVisible()
+  await expect(page.getByRole('link', { name: /^Compte rendu du 20 oct/ })).toHaveCount(0)
   await page.screenshot({ path: `captures/${info.project.name}-franchise-fiche-visites.png`, fullPage: true })
   await page.getByRole('link', { name: /^Compte rendu du 15 sept/ }).click()
   await expect(page.getByText('Vitrine propre.')).toBeVisible()
