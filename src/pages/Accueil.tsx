@@ -106,7 +106,7 @@ function LigneTache({ x, cocher, titre, detail, lien, fin }: { x: ActionSuivie; 
 const iconeFamille: Record<Famille, ReactNode> = { comptesrendus: <RateReviewOutlined />, taches: <TaskAltOutlined />, carnet: <LockOutlined />, visites: <EventNoteOutlined /> }
 
 // 430 : ma journée, les visites d'aujourd'hui et de demain ; « Je suis au magasin » au-dessus
-function MaJournee({ reseau, p, journee, encadrement }: { reseau: Reseau; p: Perimetre; journee: Visite[]; encadrement: boolean }) {
+function MaJournee({ reseau, p, journee, encadrement, auMagasin = true }: { reseau: Reseau; p: Perimetre; journee: Visite[]; encadrement: boolean; auMagasin?: boolean }) {
   const { recharger } = useReseau()
   const [reporter, setReporter] = useState<Visite | null>(null)
   const [message, setMessage] = useState('')
@@ -115,7 +115,7 @@ function MaJournee({ reseau, p, journee, encadrement }: { reseau: Reseau; p: Per
   }
   return (
     <Box component="section" aria-label="Ma journée" sx={{ mb: 2 }}>
-      <Box sx={{ mb: 1.5 }}><AuMagasin reseau={reseau} p={p} /></Box>
+      {auMagasin && <Box sx={{ mb: 1.5 }}><AuMagasin reseau={reseau} p={p} /></Box>}
       {(journee.length > 0 || !encadrement) && <TitreSection nombre={journee.length || undefined}>Ma journée</TitreSection>}
       {journee.length > 0 ? (
         <CarteLignes>
@@ -446,7 +446,8 @@ function Tableau({ reseau, p }: { reseau: Reseau; p: Perimetre }) {
       <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: 'minmax(0, 760px) minmax(360px, 1fr)', justifyContent: 'start', alignItems: 'start' }}>
         <Box sx={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>{filActu}</Box>
         <Box component="aside" aria-label="Aujourd’hui" sx={{ minWidth: 0 }}>
-          <MaJournee reseau={reseau} p={p} journee={point.journee} encadrement={encadrement} />
+          {/* Sur PC, « Je suis au magasin » reste au Coach (F1) */}
+          <MaJournee reseau={reseau} p={p} journee={point.journee} encadrement={encadrement} auMagasin={!encadrement} />
           <SondagesARepondre equipe aFaire titre="Sondages à remplir" />
           <BlocPoint reseau={reseau} point={point} moi={moi} />
         </Box>
