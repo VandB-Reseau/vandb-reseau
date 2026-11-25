@@ -20,7 +20,10 @@ const versions: VersionSimulee[] = [
   { id: 2, store_name: MAGASINS[0], annee: B, statut: 'en_discussion', base: magasinFictif, ajustements: { evolutionFlux: { cave: -0.05 } }, auteur_role: 'franchise', auteur_nom: 'Franchise Test', cree_le: `${N}-10-22T16:05:00Z` },
 ]
 
-test.beforeEach(async ({ page }) => {
+// Sur un grand écran (1 200 px et plus), les commentaires sont dans la marge (tests/pilotage/budget-pc.spec.ts) ;
+// ici, le volet, qui reste celui d'un ordinateur plus étroit et du téléphone
+test.beforeEach(async ({ page, isMobile }) => {
+  if (!isMobile) await page.setViewportSize({ width: 1100, height: 900 })
   const erreurs: string[] = []
   page.on('pageerror', (e) => erreurs.push(e.message))
   ;(page as unknown as { erreurs: string[] }).erreurs = erreurs
@@ -72,7 +75,7 @@ test('le franchisé commente une hypothèse, le siège répond, le point est ré
   await expect(mien).toContainText('Je garde −5 %, on en reparle en mars.')
   expect(ecritures.filter((e) => e.table === 'echanges_budget' && e.methode === 'POST').at(-1)?.corps).toMatchObject({ parent: 2, texte: 'Je garde −5 %, on en reparle en mars.' })
   await mien.getByRole('button', { name: 'Résolu' }).click()
-  expect(ecritures.find((e) => e.table === 'rpc/resoudre_commentaire')?.corps).toEqual({ p_id: 2, p_resolu: true })
+  await expect.poll(() => ecritures.find((e) => e.table === 'rpc/resoudre_commentaire')?.corps).toEqual({ p_id: 2, p_resolu: true })
   await expect(panneau).toContainText('1 ouvert')
   await expect(ligne.getByRole('button', { name: 'Commenter cette ligne' })).toBeVisible()
   await panneau.getByRole('button', { name: 'Voir le résolu' }).click()

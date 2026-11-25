@@ -276,6 +276,7 @@ function Marge({ fils, commun, panne, probleme, point, demande, onPoint, onFerme
   const [voirResolus, setVoirResolus] = useState(false)
   const [voirAilleurs, setVoirAilleurs] = useState(false)
   const [general, setGeneral] = useState(false)
+  const [activite, setActivite] = useState(false)
   const champ = useRef<HTMLTextAreaElement>(null)
   // Positions des points commentables dans la page, relues quand la page bouge (contenu, largeur)
   useEffect(() => {
@@ -354,7 +355,9 @@ function Marge({ fils, commun, panne, probleme, point, demande, onPoint, onFerme
         {!general && commun.moi && commun.moi.role !== 'aucun' && <Button size="small" startIcon={<AddCommentOutlined />} onClick={() => setGeneral(true)} sx={{ minHeight: 36 }}>Le budget en général</Button>}
         {ailleurs.length > 0 && <Button size="small" onClick={() => setVoirAilleurs((v) => !v)} aria-expanded={voirAilleurs} sx={{ minHeight: 36 }}>{`${voirAilleurs ? 'Masquer' : 'Voir'} ailleurs dans le budget (${ailleurs.length})`}</Button>}
         {resolus > 0 && <Button size="small" onClick={() => setVoirResolus((v) => !v)} sx={{ minHeight: 36 }}>{voirResolus ? 'Masquer les résolus' : `Voir les résolus (${resolus})`}</Button>}
+        <Button size="small" onClick={() => setActivite((v) => !v)} aria-expanded={activite} sx={{ minHeight: 36 }}>{activite ? 'Masquer l’activité' : 'Voir l’activité'}</Button>
       </Box>
+      {activite && <Activite magasin={commun.magasin} annee={commun.annee} fils={fils} />}
       {general && <NouveauCommentaire commun={commun} sur={ANCRE_BUDGET} compact apres={() => setGeneral(false)} />}
       {point && !nouveauIci && point.ancre !== ANCRE_BUDGET.ancre && <NouveauCommentaire key={`${point.ancre}-${demande}`} commun={commun} sur={point} champ={champ} compact aLaMain={demande > 0} apres={() => onPoint(null)} />}
       {voirAilleurs && ailleurs.length > 0 && (

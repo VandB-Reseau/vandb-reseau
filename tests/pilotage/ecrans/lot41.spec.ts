@@ -83,6 +83,8 @@ test('le franchisé envoie ses changements au siège ; le Directeur les relit et
     magasin: MAGASINS[0], statut: 'propose' as const, hypotheses: magasinFictif, base: magasinFictif, maj_le: '2026-10-20T09:30:00Z',
     ajustements: { evolutionPanier: { cave: 0.02 } }, ajustements_siege: {},
   }
+  // Volet des commentaires d'un ordinateur de moins de 1 200 px (au-delà, la marge : tests/pilotage/budget-pc.spec.ts)
+  if (!isMobile) await page.setViewportSize({ width: 1100, height: 900 })
   const ecritures = await seConnecter(page, { role: 'franchise', magasins: [magasin] })
   await ouvrir(page, 'Échanges')
   const revue = page.getByRole('region', { name: 'Mes changements par rapport au siège' })

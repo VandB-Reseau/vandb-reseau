@@ -42,7 +42,7 @@ test('le Directeur ne voit que les tâches qui lui sont attribuées, les coche e
   await seConnecter(page, { ecritures, persister: true, config: { actions } })
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
   // Messages et Tâches sont deux onglets ; la tâche en retard est comptée sur le picto
-  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
+  if (isMobile) await expect(nav.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
   await expect(nav.getByRole('button', { name: 'Tâches : 1 en retard ou nouvelle' })).toBeVisible()
   await ouvrirTaches(page)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tâches')

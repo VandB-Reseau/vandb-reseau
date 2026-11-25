@@ -96,15 +96,16 @@ test('le volet du budget montre aussi l’activité : commentaires et enregistre
   await connecter(page)
   await page.goto(`./#/magasins/${encodeURIComponent(M)}?vue=budget&partie=budget`)
   await page.getByRole('button', { name: /^Commentaires( \(|$)/ }).click()
-  const volet = page.getByRole('complementary', { name: 'Volet des commentaires' })
-  await volet.getByRole('button', { name: 'Tout' }).click()
+  // Sur PC, la marge des commentaires (24/11/2026) : « Voir l'activité » ; sur téléphone, le volet : « Tout »
+  const volet = page.getByRole('complementary', { name: isMobile ? 'Volet des commentaires' : 'Marge des commentaires' })
+  await volet.getByRole('button', { name: isMobile ? 'Tout' : 'Voir l’activité' }).click()
   const activite = volet.getByRole('list', { name: 'Activité du budget' })
   await expect(activite.getByRole('listitem').filter({ hasText: 'a commenté : Frais' })).toContainText('Le loyer augmente de 4 % en avril.')
   expect(await textesTropPetits(page)).toEqual([])
   if (isMobile) expect(await zonesTropPetites(page)).toEqual([])
   await page.screenshot({ path: `captures/${info.project.name}-activite-budget.png` })
-  await volet.getByRole('button', { name: 'Commentaires seuls' }).click()
-  await expect(volet.getByRole('region', { name: 'Commentaires', exact: true })).toContainText('Le loyer augmente')
+  await volet.getByRole('button', { name: isMobile ? 'Commentaires seuls' : 'Masquer l’activité' }).click()
+  await expect(isMobile ? volet.getByRole('region', { name: 'Commentaires', exact: true }) : volet).toContainText('Le loyer augmente')
 })
 
 // Le panneau de détail à droite (13B) a laissé place à la pleine largeur le 10/11/2026 : voir budget-pleine-largeur.spec.ts

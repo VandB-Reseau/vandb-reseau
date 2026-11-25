@@ -43,13 +43,13 @@ test('PC : menu clair en quatre rubriques, tête noire ; téléphone : barre du 
   if (isMobile) {
     const fond = await page.getByRole('banner').evaluate((e) => getComputedStyle(e).backgroundColor)
     expect(fond).toBe('rgb(0, 0, 0)')
-    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/, /Messages$/])
+    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
     expect(await zonesTropPetites(page)).toEqual([])
   } else {
     await expect(page.getByRole('banner')).toHaveCount(0)
     const menu = page.getByRole('navigation', { name: 'Navigation principale' })
     for (const r of ['Mon travail', 'Réseau', 'Performance', 'Siège']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, /^Messages/, 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Évolution du parc', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', /^Animation/, /^Demandes/, 'Équipe', 'Paramètres'])
+    await expect(menu.getByRole('button')).toHaveText(['Accueil', /^Tâches/, 'Agenda', 'Magasins', 'Santé du parc', 'Visites', 'Évolution du parc', 'Chiffres', 'Pilotage', 'Budget prévisionnel', 'Simulateurs', 'Marché extérieur', /^Animation/, /^Demandes/, 'Équipe', 'Paramètres'])
     // Choix 213 (15/11/2026) : Actualités et Campagnes réunies dans Animation ; l'ancienne adresse y mène
     await expect(menu.getByRole('button', { name: 'Campagnes' })).toHaveCount(0)
     await page.goto('./#/animation')
@@ -87,7 +87,7 @@ test('la fiche du magasin tient en cinq onglets et deux niveaux ; le suivi, la s
   await connecter(page)
   await page.goto(fiche())
   const onglets = page.getByRole('tablist', { name: `Rubriques de ${M}` })
-  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Équipements', 'Historique'])
+  if (!isMobile) await expect(onglets.getByRole('tab')).toHaveText(['Vue d’ensemble', /^Carnet/, 'Tâches', 'Chiffres', 'Budget', 'Simulateurs', 'Marché extérieur', 'Nine box', 'Équipements', 'Historique'])
   // Activité : un seul fil, filtré par des puces (vague 3, 23A)
   await page.goto(fiche('?vue=visites'))
   const filtres = page.getByRole('group', { name: 'Filtrer l’activité' })

@@ -105,11 +105,23 @@ test('un commentaire posé sur le budget part en notification vers les autres co
   await page.route('https://supabase.test/functions/v1/notifier', (r) => { envois.push(r.request().postDataJSON()); return r.fulfill({ json: { envoyees: 2 } }) })
   await page.goto('./#/magasins/Annecy%20Test?vue=budget&partie=budget')
   await ouvrirOnglet(page, 'Budget')
-  const panneau = page.getByRole('region', { name: 'Commentaires', exact: true })
   await page.getByRole('button', { name: 'Commenter : Ventes Cave' }).click()
-  await panneau.getByRole('textbox', { name: 'Commenter : Ventes Cave' }).fill('On vise plutôt +2 % de tickets.')
-  await panneau.getByRole('button', { name: 'Commenter', exact: true }).click()
-  await expect.poll(() => envois).toEqual([{ type: 'budget', ids: [1] }])
+  // Marge sur PC, volet sur téléphone : le champ se trouve par son nom
+  const champ = page.getByRole('textbox', { name: 'Commenter : Ventes Cave' })
+  // Un commentaire « Équipe seule » (par défaut, 24/11/2026) ne part pas en notification
+  await champ.fill('Point à voir entre nous.')
+  await page.getByRole('button', { name: 'Commenter', exact: true }).click()
+  await expect(page.getByText('Point à voir entre nous.')).toBeVisible()
+  expect(envois).toEqual([])
+  // « Avec le franchisé » : la notification part vers les autres comptes du magasin
+  // Sur téléphone, le volet couvre la page : on le ferme avant de reprendre la bulle
+  const volet = page.getByRole('complementary', { name: 'Volet des commentaires' }).getByRole('button', { name: 'Fermer les commentaires' })
+  if (await volet.isVisible()) await volet.click()
+  await page.getByRole('button', { name: /^Comment(er :|aires sur) Ventes Cave/ }).first().click()
+  await page.getByRole('textbox', { name: 'Commenter : Ventes Cave' }).fill('On vise plutôt +2 % de tickets.')
+  await page.getByRole('group', { name: 'Qui lit ce commentaire' }).getByRole('button', { name: 'Avec le franchisé' }).click()
+  await page.getByRole('button', { name: 'Commenter', exact: true }).click()
+  await expect.poll(() => envois).toEqual([{ type: 'budget', ids: [2] }])
 })
 
 // Une seule liste de tâches (Joseph, 04/11/2026, « Tâche réseau avec la mesure ») : l'action du budget est une tâche du réseau
