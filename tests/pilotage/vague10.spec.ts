@@ -298,6 +298,14 @@ test('Équipements : saisis par l’équipe, repris dans le parc de tireuses', a
   const liste = page.getByRole('list', { name: `Équipements de ${NOM}` })
   const tireuse = liste.getByRole('listitem', { name: 'Tireuse', exact: true })
   await expect(liste.getByRole('listitem', { name: 'Barnum ou tente' })).toBeVisible()
+  // Joseph (25/11/2026) : sur téléphone, un type absent tient sur une ligne, nom et compteur côte à côte
+  if (isMobile) {
+    await expect(tireuse.getByLabel('Année d’achat, Tireuse')).toHaveCount(0)
+    const nom = (await tireuse.getByText('Tireuse', { exact: true }).boundingBox())!
+    const plus = (await tireuse.getByRole('button', { name: 'Ajouter 1, Tireuse' }).boundingBox())!
+    expect(Math.abs((nom.y + nom.height / 2) - (plus.y + plus.height / 2))).toBeLessThan(12)
+    expect((await tireuse.boundingBox())!.height).toBeLessThan(90)
+  }
   await tireuse.getByRole('button', { name: 'Ajouter 1, Tireuse' }).click()
   await expect(tireuse.getByLabel('Quantité, Tireuse')).toHaveValue('1')
   await tireuse.getByLabel('Quantité, Tireuse').fill('4')

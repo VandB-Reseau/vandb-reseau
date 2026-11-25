@@ -51,6 +51,7 @@ const chargeurs = {
   ficheCoach: () => import('./pages/FicheCoach').then((m) => ({ default: m.FicheCoach })),
   personnes: () => import('./pages/FichePersonne'),
   visites: () => import('./pages/Visites').then((m) => ({ default: m.Visites })),
+  carnet: () => import('./pages/CarnetReseau').then((m) => ({ default: m.CarnetReseau })),
   agenda: () => import('./pages/Agenda').then((m) => ({ default: m.Agenda })),
   sante: () => import('./pages/SanteParc').then((m) => ({ default: m.SanteParc })),
   echanges: () => import('./pages/Echanges'),
@@ -86,6 +87,7 @@ const FicheRR = chargementDiffere(() => chargeurs.personnes().then((m) => ({ def
 const FicheDirecteur = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheDirecteur })))
 const FicheFranchise = chargementDiffere(() => chargeurs.personnes().then((m) => ({ default: m.FicheFranchise })))
 const Visites = chargementDiffere(chargeurs.visites)
+const CarnetReseau = chargementDiffere(chargeurs.carnet)
 const Agenda = chargementDiffere(chargeurs.agenda)
 const SanteParc = chargementDiffere(chargeurs.sante)
 const Echanges = chargementDiffere(() => chargeurs.echanges().then((m) => ({ default: m.Echanges })))
@@ -173,6 +175,7 @@ function Routes_({ equipeSeule = false, bandeau }: { equipeSeule?: boolean; band
         <Route path="/parametres/collaborateurs" element={<Navigate to="/equipe?vue=collaborateurs" replace />} />
         <Route path="/parametres/franchises" element={<Navigate to="/equipe?vue=franchises" replace />} />
         <Route path="/visites" element={<Visites />} />
+        <Route path="/carnet" element={<CarnetReseau />} />
         <Route path="/echanges" element={<Echanges />} />
         <Route path="/taches" element={<PageTaches />} />
         <Route path="/demandes" element={<PageDemandes />} />

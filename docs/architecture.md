@@ -44,12 +44,13 @@ sur l’appareil), dictée du navigateur.
 | `src/data/` | Accès aux données et règles métier (voir ci-dessous) |
 | `src/lib/` | Outils techniques : client Supabase, photos, pièces jointes, dictée, cache, formats |
 | `src/pilotage/` | Pilotage financier des magasins (budget, suivi, saisies, imports de caisse, paramètres), venu de l'app de pilotage à la fusion (03/11/2026) : entrée « Budgets » (`/budgets/*`), onglet « Budget » de la fiche magasin (`?vue=budget&partie=…`), espace du contrôle de gestion. Moteur de calcul pur dans `src/pilotage/moteur/`, testé dans `tests/pilotage/moteur/` |
-| `supabase/migrations/` | Schéma de la base, une migration numérotée par changement |
+| `supabase/migrations/` | Schéma de la base, une migration numérotée par changement (série unique, schémas `public` et `pilotage`) |
+| `supabase/migrations/pilotage/` | Historique figé du schéma `pilotage` (0001 à 0038), venu du dépôt `vandb-pilotage` le 25/11/2026 |
 | `supabase/functions/notifier/` | Fonction Supabase d'envoi des notifications, à coller dans Edge Functions |
 | `supabase/functions/comptes/` | Fonction Supabase de création, réinitialisation et suppression des comptes des franchisés (Directeur seul) |
 | `supabase/functions/agenda/` | Fonction Supabase publique (sans « Verify JWT ») : agenda .ics relu par Google Agenda, lu par lien secret |
 | `public/sw.js` | Service worker : affiche les notifications reçues et ouvre l'écran visé (aucun cache) |
-| `supabase/tests/` | Rejoue les migrations sur un PostgreSQL vide et contrôle les règles d'accès |
+| `supabase/tests/` | Rejoue les migrations sur un PostgreSQL vide et contrôle les règles d'accès (`pilotage/` pour le schéma `pilotage`) |
 | `tests/` | Tests Playwright ; `supabase-simule.ts` simule la base, `donnees-fictives.ts` le réseau de test |
 | `docs/` | Cette documentation |
 

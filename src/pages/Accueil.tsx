@@ -137,7 +137,7 @@ function aTraiter(reseau: Reseau, p: Perimetre, sansParametres: boolean, moi = '
   // Carnet du magasin (Joseph, 24/11/2026) : les alertes ouvertes par un collègue, jusqu'à ce qu'on les close
   for (const { magasin, note } of alertesOuvertes(reseau, perimetre).filter((x) => !moi || x.note.par !== moi)) {
     items.push({ cle: `na-${note.id}`, titre: magasin, avatar: magasin, icone: <LockOutlined />, lien: lienNote(magasin, note.id),
-      detail: [note.par, dateCourte(note.date), extrait(note.texte, 90)].filter(Boolean).join(' · '), pastille: { ton: 'rouge', libelle: 'Alerte' } })
+      detail: [note.par, dateCourte(note.date), note.prise && `${note.prise.par} s’en occupe`, extrait(note.texte, 90)].filter(Boolean).join(' · '), pastille: { ton: 'rouge', libelle: 'Alerte' } })
   }
   // Tâches en retard ou à échéance dans les quinze jours
   const dans15j = ajouterJours(j, 15)

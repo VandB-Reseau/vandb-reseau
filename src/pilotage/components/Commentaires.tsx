@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import LockOutlined from '@mui/icons-material/LockOutlined'
-import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { Choix } from '../../components/Carnet'
 import { useReseauSiDispo } from '../../data/ReseauContext'
 import { monNomPorteur } from '../../data/actions'
@@ -41,6 +40,8 @@ import { useChargement } from '../data/useChargement'
 // Joseph (24/11/2026, proposition C retenue pour le budget) : sur PC large, les commentaires passent dans la marge, chacun
 // à hauteur de la ligne qu'il commente, comme dans un document partagé. Chacun dit qui le lit (« Équipe seule » ou « Avec
 // le franchisé », migration pilotage 0037) et peut prévenir des collègues dans leur cloche. Téléphone et petit écran : volet.
+// Joseph (25/11/2026) : un commentaire du budget est toujours lu par le franchisé, plus de choix « Équipe seule ». Ceux
+// déjà écrits ainsi restent cachés au franchisé et gardent leur puce.
 
 export const ANCRE_BUDGET = { ancre: 'budget', libelle: 'Le budget en général' }
 const MAX_TEXTE = 2000
@@ -165,39 +166,31 @@ export function CommentairesBudget({ magasin, annee, moi, children }: {
   return <Ctx.Provider value={ctx}>{children(panneau, ouverts.length)}</Ctx.Provider>
 }
 
-// Qui lit ce commentaire : une puce sur chaque fil (l'équipe la voit ; le franchisé ne voit que les siens)
-function PuceVisibilite({ equipe }: { equipe: boolean }) {
+// Commentaire écrit en « Équipe seule » avant le 25/11/2026 : sa puce le dit à l'équipe
+function PuceEquipeSeule() {
   return (
-    <Chip size="small" icon={equipe ? <LockOutlined /> : <StorefrontOutlined />} label={equipe ? 'Équipe seule' : 'Avec le franchisé'}
-      sx={{ fontSize: '0.75rem', fontWeight: 600, height: 24, ...(equipe ? { bgcolor: 'rgba(234, 96, 41, 0.12)', color: 'warning.dark', '& .MuiChip-icon': { color: 'inherit' } } : {}) }} />
+    <Chip size="small" icon={<LockOutlined />} label="Équipe seule"
+      sx={{ fontSize: '0.75rem', fontWeight: 600, height: 24, bgcolor: 'rgba(234, 96, 41, 0.12)', color: 'warning.dark', '& .MuiChip-icon': { color: 'inherit' } }} />
   )
 }
 
-// Nouveau commentaire : texte, qui le lit (équipe), collègues prévenus
+// Nouveau commentaire : texte et collègues prévenus, toujours lu par le franchisé
 function NouveauCommentaire({ commun, sur, champ, compact, apres, aLaMain }: { commun: Commun; sur: Point; champ?: React.Ref<HTMLTextAreaElement>; compact?: boolean; apres?: () => void; aLaMain?: boolean }) {
   const [texte, setTexte] = useState('')
   const zone = useRef<HTMLTextAreaElement | null>(null)
   // Demandé depuis la bulle d'une ligne : le champ prend la main dès qu'il paraît (la marge se place après mesure)
   useEffect(() => { if (aLaMain) zone.current?.focus({ preventScroll: true }) }, [aLaMain])
   const lier = (el: HTMLTextAreaElement | null) => { zone.current = el; if (typeof champ === 'function') champ(el); else if (champ) (champ as React.MutableRefObject<HTMLTextAreaElement | null>).current = el }
-  const [equipe, setEquipe] = useState(true)
   const [prevenir, setPrevenir] = useState<string[]>([])
-  const { magasin, annee, equipeDuReseau, autres, occupe, agir } = commun
+  const { magasin, annee, autres, occupe, agir } = commun
   return (
     <Box sx={{ display: 'grid', gap: 1 }}>
       <TextField inputRef={lier} size="small" multiline minRows={2} maxRows={6} label={`Commenter : ${sur.libelle}`} value={texte}
         onChange={(e) => setTexte(e.target.value.slice(0, MAX_TEXTE))} />
-      {equipeDuReseau && (
-        <ToggleButtonGroup exclusive size="small" value={equipe ? 'equipe' : 'tous'} onChange={(_, v) => v && setEquipe(v === 'equipe')} aria-label="Qui lit ce commentaire"
-          sx={{ '& .MuiToggleButton-root': { minHeight: { xs: 48, lg: 36 }, px: 1.25, textTransform: 'none', gap: 0.5 } }}>
-          <ToggleButton value="equipe"><LockOutlined sx={{ fontSize: 16 }} />Équipe seule</ToggleButton>
-          <ToggleButton value="tous"><StorefrontOutlined sx={{ fontSize: 16 }} />Avec le franchisé</ToggleButton>
-        </ToggleButtonGroup>
-      )}
       {autres.length > 0 && <Choix label="Prévenir" multiple options={autres.map((n) => ({ v: n, libelle: n }))} valeurs={prevenir} changer={setPrevenir} />}
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
         <Button variant="contained" startIcon={compact ? undefined : <AddCommentOutlined />} disabled={occupe || !texte.trim()} sx={{ minHeight: { xs: 48, lg: compact ? 36 : 48 } }}
-          onClick={() => void agir(() => envoyerCommentaire(magasin, annee, { ancre: sur.ancre, libelle: sur.libelle, texte, equipe: equipeDuReseau && equipe, mentions: prevenir }), () => { setTexte(''); setPrevenir([]); apres?.() })}>
+          onClick={() => void agir(() => envoyerCommentaire(magasin, annee, { ancre: sur.ancre, libelle: sur.libelle, texte, mentions: prevenir }), () => { setTexte(''); setPrevenir([]); apres?.() })}>
           Commenter
         </Button>
         {apres && <Button onClick={apres} sx={{ minHeight: { xs: 48, lg: 36 } }}>Annuler</Button>}
@@ -223,7 +216,7 @@ function CarteFil({ f, commun, avecPoint, onPoint }: { f: Fil; commun: Commun; a
             {libelle}
           </Button>
         ) : <Typography variant="body2" sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}>{libelle}</Typography>}
-        {equipeDuReseau && <PuceVisibilite equipe={f.equipe} />}
+        {equipeDuReseau && f.equipe && <PuceEquipeSeule />}
       </Box>
       {[f, ...f.reponses].map((m, i) => (
         <Box key={m.id} sx={{ ...(i ? { ml: 1.5, pl: 1.25, borderLeft: 2, borderColor: 'divider' } : {}), display: 'flex', gap: 0.5, alignItems: 'flex-start' }}>

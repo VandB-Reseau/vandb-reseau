@@ -33,6 +33,8 @@ import CalculateOutlined from '@mui/icons-material/CalculateOutlined'
 import Calculate from '@mui/icons-material/Calculate'
 import InsightsOutlined from '@mui/icons-material/InsightsOutlined'
 import Insights from '@mui/icons-material/Insights'
+import MenuBookOutlined from '@mui/icons-material/MenuBookOutlined'
+import MenuBook from '@mui/icons-material/MenuBook'
 
 export interface Destination {
   chemin: string
@@ -54,6 +56,8 @@ export const magasins: Destination = { chemin: '/magasins', libelle: 'Magasins',
 const accueil: Destination = { chemin: '/', libelle: 'Accueil', description: 'Ce qui demande ton attention aujourd’hui', icone: <HomeOutlined />, iconeActive: <Home />, sprint: 'Sprint 4' }
 export const visites: Destination = { chemin: '/visites', libelle: 'Visites', description: 'Visites terrain, audits et couverture du semestre', icone: <EventNoteOutlined />, iconeActive: <EventNote />, sprint: 'Sprint 3' }
 export const sante: Destination = { chemin: '/plus/sante', libelle: 'Santé du parc', court: 'Santé', description: 'Nine box et évaluation des magasins', icone: <MonitorHeartOutlined />, iconeActive: <MonitorHeart />, sprint: 'Sprint 4' }
+// Carnet du réseau (Joseph, 25/11/2026) : les notes de l'équipe sur tous les magasins du périmètre, jamais le franchisé
+export const carnetReseau: Destination = { chemin: '/carnet', libelle: 'Carnet', description: 'Les notes de l’équipe sur les magasins, ce qui reste à traiter', icone: <MenuBookOutlined />, iconeActive: <MenuBook />, sprint: 'Carnet 25/11' }
 export const principales: Destination[] = [accueil, magasins, visites, messages, taches, sante]
 
 // Performance (refonte vague 2, Joseph 09/11/2026, 15A) : les chiffres du réseau en une page
@@ -102,7 +106,7 @@ export function rubriquesMenu(sansParametres?: boolean): Rubrique[] {
   return [
     { titre: 'Mon travail', destinations: [accueil, taches, agenda] },
     // Joseph (17/11/2026) : Réseau = Magasins, Santé du parc, Visites ; les chiffres et outils passent sous Performance
-    { titre: 'Réseau', destinations: [magasins, sante, visites, ...(sansParametres ? [] : [evolution])] },
+    { titre: 'Réseau', destinations: [magasins, sante, visites, carnetReseau, ...(sansParametres ? [] : [evolution])] },
     { titre: 'Performance', destinations: [chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur] },
     { titre: 'Siège', destinations: [infosReseau, demandes] },
     // 309 (Joseph, 18/11/2026) : Équipe et Paramètres visibles dans le menu du Directeur, plus seulement dans le menu du compte
@@ -116,7 +120,7 @@ export const menuTelephone = (role: string | undefined) => menuTelephoneRubrique
 // Vague 6 (Joseph, 10/11/2026) : le menu du compte sur téléphone rangé comme le menu du PC, en rubriques
 // 308 (18/11/2026) : sans Magasins (déjà dans la barre du bas), Siège remonté avant Performance
 export const menuTelephoneRubriques = (role: string | undefined, sansEvolution = false): Rubrique[] => [
-  { titre: 'Réseau', destinations: pourRole([sante, visites, ...(sansEvolution ? [] : [evolution])], role) },
+  { titre: 'Réseau', destinations: pourRole([sante, visites, carnetReseau, ...(sansEvolution ? [] : [evolution])], role) },
   { titre: 'Siège', destinations: pourRole([infosReseau, demandes], role) },
   { titre: 'Performance', destinations: pourRole([chiffres, pilotageRapports, budgetPrevisionnel, simulateursEquipe, marcheExterieur], role) },
 ].filter((r) => r.destinations.length)

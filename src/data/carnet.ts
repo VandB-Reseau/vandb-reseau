@@ -49,6 +49,19 @@ export function alertesOuvertes(reseau: Reseau, magasins: Magasin[]): { magasin:
     .sort((a, b) => dernierEchange(b.note).localeCompare(dernierEchange(a.note)))
 }
 
+// Carnet du réseau (25/11/2026) : une note et son magasin
+export interface NoteLue { magasin: string; note: NoteMagasin }
+// Me concerne : je l'ai écrite, on m'y nomme, j'y ai répondu ou je m'en occupe
+export function meConcerne(n: NoteMagasin, moi: string): boolean {
+  if (!moi) return false
+  return n.par === moi || !!n.mentions?.includes(moi) || n.prise?.par === moi || !!n.reponses?.some((r) => r.par === moi || r.mentions?.includes(moi))
+}
+
+// À traiter : alertes d'abord, puis points à surveiller ; les plus anciennes d'abord dans chaque ton
+export function aTraiterCarnet(notes: NoteLue[]): NoteLue[] {
+  return notes.filter((x) => ouverte(x.note)).sort((a, b) => (tonDe(a.note) === tonDe(b.note) ? 0 : tonDe(a.note) === 'alerte' ? -1 : 1) || instantNote(a.note).localeCompare(instantNote(b.note)))
+}
+
 export interface EvenementCarnet { id: string; titre: string; detail: string; quand: string; lien: string }
 // Ce qui arrive dans la cloche (Joseph, 24/11/2026 : « bien remonter les mentions ») : on m'a nommé dans une note ou une
 // réponse, on a répondu à une note que j'ai écrite ou où j'ai répondu ; pour le RR et le Directeur, toute nouvelle alerte.

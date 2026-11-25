@@ -26,7 +26,7 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 - Rôles (`src/auth/roles.ts`) : directeur, rr, coach (l'équipe) et franchise ; direction (24/11/2026, migration 0054) : lecture de tout le réseau, écriture dans le carnet seulement, ouverte par le Directeur. Le rôle est lu dans la base (`mon_acces`), pas seulement dans le jeton. Un franchisé ne lit aucune table : la fonction `espace_franchise()` lui renvoie ses magasins (migrations `0004_acces_franchises.sql` et `0005_cloisonnement_equipe.sql`). Tout nouvel écran de l'équipe reste invisible au franchisé ; toute nouvelle donnée à lui montrer passe par cette fonction.
 - Coach et RR : la base ne leur renvoie que les visites, chiffres et suivi de leurs magasins (table `perimetre_equipe` tenue par l'app du Directeur, script `supabase/migrations/0005_cloisonnement_equipe.sql`). Toute nouvelle donnée rangée par magasin va dans `suivi_magasins` (une ligne par magasin et par rubrique), jamais dans une clé d'`app_config`. Pas de Paramètres pour eux.
 - Référentiels (liste des magasins, affectations, équipe, fiches des personnes, campagnes, thématiques, grilles, réglages) : écrits par le Directeur seul, en base comme à l'écran (`useDroits().referentiels`, `src/auth/Droits.tsx`). Le Coach et le RR écrivent visites, chiffres, suivi de leurs magasins (santé comprise), bonnes pratiques, agenda et messages. Accès de l'équipe ouverts depuis la fiche du Coach ou du RR ; « Voir comme » reprend le profil de la personne (`ProfilVu`).
-- Base de données : tout changement (table, colonne, règle, fonction, rubrique de `suivi_magasins`) = une **nouvelle** migration `supabase/migrations/NNNN_sujet.sql`, réexécutable, sans jamais rouvrir un accès si elle est rejouée seule ; on ne modifie pas une migration déjà passée en ligne. Dans la même demande de fusion : `docs/base-de-donnees.md` à jour, contrôle ajouté dans `supabase/tests/regles_acces.sql` si un accès change, `npm run test:base` vert. Aucune règle « tout compte connecté » (`USING (true)`). Chaque migration ajoute sa ligne dans `journal_migrations`. Ne jamais faire repasser les anciens scripts hors dépôt (« Setup COMPLET », « verrouillage »).
+- Base de données : tout changement (table, colonne, règle, fonction, rubrique de `suivi_magasins`) = une **nouvelle** migration `supabase/migrations/NNNN_sujet.sql`, réexécutable, sans jamais rouvrir un accès si elle est rejouée seule ; on ne modifie pas une migration déjà passée en ligne. Dans la même demande de fusion : `docs/base-de-donnees.md` à jour, contrôle ajouté dans `supabase/tests/regles_acces.sql` (ou `supabase/tests/pilotage/regles_acces.sql` pour le schéma `pilotage`) si un accès change, `npm run test:base` vert. Aucune règle « tout compte connecté » (`USING (true)`). Chaque migration ajoute sa ligne dans `journal_migrations`. Ne jamais faire repasser les anciens scripts hors dépôt (« Setup COMPLET », « verrouillage »).
 - Journal : chaque demande de fusion ajoute sa ligne dans `CHANGELOG.md` (section « À venir », puis rangée sous son sprint), avec la migration à passer s'il y en a une.
 - Chaque fonctionnalité livrée a ses tests Playwright sur les projets `pc` et `telephone`, avec Supabase simulé (`tests/supabase-simule.ts`).
 - Date des tests figée au 27/10/2026 à 10 h (`tests/horloge.ts`), côté test et dans la page : les données fictives ne vieillissent plus. Une date posée par `addInitScript` se calcule côté test et se passe en argument.
@@ -38,7 +38,11 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
 ## Pilotage financier (`src/pilotage/`, fusion du 03/11/2026)
 - Venu de l'app « V and B Pilotage » (dépôt `VandB-Reseau/vandb-pilotage`, figé à la fusion). Menu « Budgets », onglet
   « Budget » de la fiche magasin (équipe et franchisé), espace du contrôle de gestion. Ses données sont dans le schéma
-  `pilotage` de la même base ; ses migrations restent pour l'instant dans le dépôt du pilotage (`supabase/migrations/`).
+  `pilotage` de la même base. Dépôts réunis le 25/11/2026 (choix de Joseph) : l'ancien dépôt n'est plus qu'une page de
+  renvoi ; l'historique des migrations du schéma `pilotage` est figé dans `supabase/migrations/pilotage/` (0001 à 0038,
+  journal `pilotage.journal_migrations`), ses contrôles dans `supabase/tests/pilotage/`. Toute nouvelle migration, même
+  sur le schéma `pilotage`, prend le numéro suivant de la série unique `supabase/migrations/` (0055 et après) et sa ligne
+  dans `public.journal_migrations`.
 - Règles propres : montants HT dans tous les calculs (TTC pour la trésorerie et les paniers saisis) ; redevance 2 % et
   publicité 1 % du CA HT, au-dessus de l'EBE ; tout calcul financier passe par le moteur pur `src/pilotage/moteur/`,
   testé dans `tests/pilotage/moteur/` (projet Playwright `moteur`). L'aide s'ouvre seulement par l'icône (i)
@@ -56,7 +60,10 @@ React 19 + TypeScript + MUI 9 (thème `src/theme/theme.ts`), react-router (HashR
   deux simulations, ajoute leurs magasins au réseau fictif et arrive sur « Budgets » ; `ouvrir`, `allerVers` suivent les onglets.
 
 ## Documentation
-- `docs/architecture.md` (pile, dossiers, flux, rôles), `docs/base-de-donnees.md` (schéma), `supabase/README.md` (migrations), `CHANGELOG.md` (sprints). Les lire avant de toucher à la base.
+- `docs/architecture.md` (pile, dossiers, flux, rôles), `docs/regles-metier.md` (décisions métier), `docs/base-de-donnees.md`
+  (schéma public), `docs/base-pilotage.md` (schéma pilotage), `supabase/README.md` (migrations), `docs/deploiement.md`
+  (mise en ligne, passage des migrations), `docs/tests-et-ci.md`, `CHANGELOG.md` (sprints). Les lire avant de toucher à la base.
+- Une décision métier nouvelle de Joseph va dans `docs/regles-metier.md`, datée, dans la même demande de fusion.
 
 ## Commandes
 - `npm run dev` : développement
