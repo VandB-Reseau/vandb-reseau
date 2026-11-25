@@ -44,7 +44,7 @@ test('79A et fiche : un seul bouton Visite, « + » regroupe tâche, visite non 
   await expect(page.getByRole('region', { name: 'À faire' })).toBeVisible()
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
   const menu = page.getByRole('menu')
-  for (const n of ['Tâche', 'Visite non prévue', 'Appel', 'Note']) await expect(menu.getByRole('menuitem', { name: n })).toBeVisible()
+  for (const n of ['Tâche', 'Visite non prévue', 'Appel', 'Note au carnet']) await expect(menu.getByRole('menuitem', { name: n })).toBeVisible()
   await page.keyboard.press('Escape')
   // Le menu « ⋯ » ne propose plus Planifier ni Préparer
   await page.getByRole('button', { name: 'Autres actions' }).click()

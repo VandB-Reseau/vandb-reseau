@@ -48,11 +48,10 @@ test('saisir un appel : il ne compte pas comme visite', async ({ page }) => {
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test?vue=chiffres')
   await page.getByRole('button', { name: 'Saisir un appel' }).click()
-  const d = page.getByRole('dialog', { name: 'Saisir une visite' })
-  await expect(d.getByRole('region', { name: 'Visite' })).toContainText('Appel · ')
-  // Pas de compte rendu ni de signature pour un appel
+  // Compte rendu d'échange (25/11/2026) : quelques lignes, ni signature ni envoi
+  const d = page.getByRole('dialog', { name: 'Compte rendu d’échange' })
   await expect(d.getByText('Visite contractuelle, à faire signer')).toHaveCount(0)
-  await d.getByLabel('Notes', { exact: true }).fill('Point sur la baisse de septembre.')
+  await d.getByRole('textbox', { name: 'Ce qui s’est dit' }).fill('Point sur la baisse de septembre.')
   await d.getByRole('button', { name: 'Enregistrer' }).click()
   await expect(d).toBeHidden()
   const visite = ecritures.find((e) => e.table === 'visits')!

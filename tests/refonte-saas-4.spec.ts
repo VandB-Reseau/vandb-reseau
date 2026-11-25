@@ -61,20 +61,23 @@ test('32A : la page Tâches se lit en vues soulignées', async ({ page, isMobile
   await lisible(page, isMobile, false)
 })
 
-test('remarques internes d’une visite : jamais montrées au franchisé', async ({ page, isMobile }) => {
+test('notes au carnet depuis une visite : barre compacte, liées à la visite, jamais montrées au franchisé', async ({ page, isMobile }) => {
   const ecritures: Ecriture[] = []
-  await seConnecter(page, { ecritures })
+  await seConnecter(page, { ecritures, persister: true })
   await page.goto('./#/magasins/Lyon%20Test/visite?id=1&etape=surplace')
-  await expect(page.getByRole('heading', { name: 'Remarques internes' })).toBeVisible()
-  await expect(page.getByText('Visibles de l’équipe seulement, jamais du franchisé ni dans le compte rendu.')).toBeVisible()
-  await page.getByRole('button', { name: 'Ajouter une remarque' }).click()
-  const d = page.getByRole('dialog', { name: 'Remarque interne' })
-  await d.getByRole('button', { name: 'Préoccupante' }).click()
-  await d.getByRole('textbox', { name: 'Remarque' }).fill('Équipe fatiguée, le franchisé ne délègue pas.')
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
-  await expect(d).toHaveCount(0)
-  const note = ecritures.find((e) => JSON.stringify(e.corps).includes('Équipe fatiguée'))
-  expect(JSON.stringify(note?.corps)).toContain('preoccupante')
+  await expect(page.getByRole('heading', { name: 'Au carnet du magasin' })).toBeVisible()
+  const saisie = page.getByRole('region', { name: 'Nouvelle note de la visite' })
+  await saisie.getByRole('textbox', { name: 'Ajouter au carnet' }).fill('Équipe fatiguée, le franchisé ne délègue pas.')
+  await saisie.getByRole('button', { name: 'Ton : Info' }).click()
+  await page.getByRole('menu', { name: 'Ton' }).getByRole('menuitem', { name: 'Alerte' }).click()
+  await saisie.getByRole('button', { name: 'Noter' }).click()
+  await expect(page.getByText('Ajouté au carnet. Le franchisé ne le verra pas.')).toBeVisible()
+  const note = JSON.stringify(ecritures.find((e) => JSON.stringify(e.corps).includes('Équipe fatiguée'))?.corps)
+  expect(note).toContain('alerte')
+  expect(note).toMatch(/visite\\?":1/)
+  await expect(page.getByRole('list', { name: 'Notes de la visite' })).toContainText('Équipe fatiguée')
+  // Deuxième élément d'affilée : la barre s'est vidée
+  await expect(saisie.getByRole('textbox', { name: 'Ajouter au carnet' })).toHaveValue('')
   await lisible(page, isMobile, false)
 })
 
@@ -196,7 +199,7 @@ test('42A : barre du téléphone et journée du Coach', async ({ page, isMobile 
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
   await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').first()).toHaveText('Visite')
   await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(1)).toHaveText('Appel')
-  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(2)).toHaveText('Note')
+  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(2)).toHaveText('Tâche')
   await lisible(page, isMobile, false)
 })
 

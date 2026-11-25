@@ -141,6 +141,8 @@ function Parcours({ reseau, m, etapeParDefaut }: { reseau: Reseau; m: Magasin; e
             ? <ListeActions reseau={reseau} actions={actions} signaler={setMessage} libelle="Tâches décidées pendant la visite" magasins={[m.nom]} />
             : <LigneVide action={<Button variant="outlined" startIcon={<EditOutlined />} onClick={() => setSaisie(true)} sx={{ minHeight: 48 }}>Modifier la visite</Button>}>Aucune tâche décidée pendant la visite.</LigneVide>}
         </Box>
+        {/* 25/11/2026 : compléter la visite par 2 ou 3 notes au carnet, aussi depuis le compte rendu */}
+        <Box className="sans-impression"><RemarquesInternes reseau={reseau} magasin={m.nom} visite={v} signaler={setMessage} /></Box>
       </Box>
     )
   }

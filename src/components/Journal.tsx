@@ -1,8 +1,5 @@
-import { creerOuGarder } from '../lib/horsLigne'
-import Autocomplete from '@mui/material/Autocomplete'
 import { useState } from 'react'
 import Box from '@mui/material/Box'
-import TextField from '@mui/material/TextField'
 import { Fenetre } from './EditionEquipe'
 import { journalMagasin } from '../data/journal'
 import type { ElementFil } from '../data/fil'
@@ -11,11 +8,9 @@ import { caseDe, historiqueSante, type IdCritere, type Note } from '../data/sant
 import { NotesParAxe, PastilleCase } from './Sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Magasin, NoteMagasin, Reseau, TonNote } from '../data/modele'
-import { Choix, Pastille, useCouleurTon } from './Carnet'
+import { ReglagesNote, ResumeReglages } from './SaisieNote'
 import { useReseau } from '../data/ReseauContext'
-import { useAuth } from '../auth/AuthContext'
-import { monNomPorteur } from '../data/actions'
-import { collegues, nouvelIdNote, THEMES, tonDe, TONS } from '../data/carnet'
+import { collegues, nouvelIdNote, tonDe } from '../data/carnet'
 import { TexteDicte } from './Dictee'
 import { ChampDate } from './ChampDate'
 
@@ -44,22 +39,18 @@ export function useEditionJournal(reseau: Reseau, m: Magasin, signaler: (message
     const n = j.noteId ? reseau.notesMagasins[m.nom]?.find((x) => x.id === j.noteId) : undefined
     if (n) setNote(n); else if (j.type === 'sante') setSante(j.date)
   }
-  const { profil } = useAuth()
-  const nouvelleNote = () => setNote({ id: '', date: reseau.jour, texte: '', par: monNomPorteur(reseau, profil) || profil?.nom || reseau.directeur.nom })
   const fenetres = <>
     {sante && <DialogSante reseau={reseau} magasin={m.nom} date={sante} onFermer={(msg) => { setSante(null); if (msg) signaler(msg) }} />}
     {note && <DialogNote magasin={m.nom} note={note} onFermer={(msg) => { setNote(null); if (msg) signaler(msg) }} />}
   </>
-  return { ouvrir, nouvelleNote, fenetres }
+  return { ouvrir, fenetres }
 }
 
-// magasins : note créée depuis le « + » (refonte vague 4, 42A), le magasin se choisit dans la fenêtre
-export function DialogNote({ magasin: initial, note, magasins, onFermer }: { magasin: string; note: NoteMagasin; magasins?: string[]; onFermer: (message?: string) => void }) {
+// Modifier une note du carnet depuis l'historique ; une nouvelle note s'écrit dans le carnet (Joseph, 25/11/2026)
+export function DialogNote({ magasin, note, onFermer }: { magasin: string; note: NoteMagasin; onFermer: (message?: string) => void }) {
   const { reseau } = useReseau()
-  const couleur = useCouleurTon()
   const [date, setDate] = useState(note.date)
   const [texte, setTexte] = useState(note.texte)
-  const [magasin, setMagasin] = useState(initial)
   // Carnet du magasin (Joseph, 24/11/2026) : ton, thèmes et collègues prévenus, comme dans l'onglet Carnet
   const [ton, setTon] = useState<TonNote>(tonDe(note))
   const [themes, setThemes] = useState<string[]>(note.themes ?? [])
@@ -73,18 +64,20 @@ export function DialogNote({ magasin: initial, note, magasins, onFermer }: { mag
         if (!themes.length) delete n.themes
         if (!mentions.length) delete n.mentions
         // Choix 114 : une nouvelle note se garde sur l'appareil sans réseau
-        if (!note.id) return (await creerOuGarder('note', `Note · ${magasin}`, { magasin, note: n }, () => enregistrerNoteMagasin(magasin, n))) ? 'Note gardée sur l’appareil : elle partira seule au retour du réseau.' : 'Note enregistrée.'
         await enregistrerNoteMagasin(magasin, n)
         return 'Note enregistrée.'
       }}
       supprimer={note.id ? async () => { await supprimerNoteMagasin(magasin, note.id); return 'Note supprimée.' } : undefined}
       libelleSuppression="Supprimer cette note du carnet ?">
-      {magasins && <Autocomplete options={magasins} value={magasin || null} onChange={(_, v) => setMagasin(v ?? '')} renderInput={(p) => <TextField {...p} label="Magasin" />} />}
       <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <TexteDicte label="Note" libelleDictee="Note" valeur={texte} changer={setTexte} multiline minRows={4} autoFocus />
-      <Choix label="Ton" options={TONS.map((t) => ({ v: t.v, libelle: t.libelle, icone: <Pastille couleur={couleur(t.v).bord} /> }))} valeurs={[ton]} changer={(v) => setTon(v[0])} />
-      <Choix label="Thèmes" multiple options={THEMES} valeurs={themes} changer={setThemes} />
-      {autres.length > 0 && <Choix label="Prévenir" multiple options={autres.map((p) => ({ v: p.nom, libelle: p.nom }))} valeurs={prevenir} changer={setPrevenir} />}
+      {/* 25/11/2026 : ton, thèmes et collègues en une rangée, comme la barre du carnet */}
+      <Box sx={{ display: 'grid', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          <ReglagesNote ton={ton} changerTon={setTon} themes={themes} changerThemes={setThemes} mentions={prevenir} changerMentions={setPrevenir} autres={autres} />
+        </Box>
+        <ResumeReglages themes={themes} mentions={prevenir} />
+      </Box>
     </Fenetre>
   )
 }
