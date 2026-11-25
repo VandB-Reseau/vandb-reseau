@@ -106,5 +106,7 @@ changement ; en cas de doute, lui poser la question plutôt que de trancher seul
   semaine), carnet (alertes que personne n'a prises, mentions sans réponse), magasins à visiter (à préparer, pas vus
   au-delà du délai de leur case). Cinq lignes par famille, une famille vide n'apparaît pas. Le Coach voit chaque ligne ;
   le RR et le Directeur voient les leurs une par une, et une ligne par personne pour celles des autres.
+- Barre du bas de l'équipe sur téléphone (Joseph, 25/11/2026) : Accueil, Magasins, Visites, Carnet, Tâches. L'Agenda
+  est dans le menu du compte. La barre du franchisé ne change pas.
 
 Le détail des règles d'interface et de code est dans [CLAUDE.md](../CLAUDE.md) et [architecture.md](architecture.md).

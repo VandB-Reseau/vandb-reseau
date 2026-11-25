@@ -21,7 +21,7 @@ test('le bouton Créer ouvre sous lui un menu : visite, appel, tâche, photo, é
   await seConnecter(page)
   // Téléphone : « + » dans l'en-tête ; la barre du bas a quatre onglets depuis le retrait des Messages (24/11/2026)
   const creer = page.locator('.MuiFab-root[aria-label="Ajouter"]')
-  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
+  if (isMobile) await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')).toHaveText(['Accueil', 'Magasins', 'Visites', 'Carnet', /Tâches$/])
   const bouton = (await creer.boundingBox())!
   await creer.click()
   const d = page.getByRole('menu', { name: 'Ajouter', exact: true })

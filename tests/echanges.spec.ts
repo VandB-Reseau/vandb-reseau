@@ -108,12 +108,12 @@ test('le Directeur crée un groupe libre et y écrit', async ({ page }) => {
   expect(ecritures.find((e) => e.table === 'rpc/envoyer_fil')!.corps).toMatchObject({ p_fil: 'groupe:1', p_texte: 'Point visio lundi.' })
 })
 
-test('téléphone : barre du bas à quatre onglets (messagerie retirée le 24/11/2026), « + » dans l’en-tête', async ({ page }, info) => {
+test('téléphone : barre du bas à cinq onglets (Agenda au menu du compte le 25/11/2026), « + » dans l’en-tête', async ({ page }, info) => {
   test.skip(info.project.name !== 'telephone', 'barre du bas : téléphone seulement')
   await seConnecter(page, { messagerie: {} })
   await page.goto('./#/')
   const barre = barreBasse(page)
-  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Agenda', 'Magasins', /Tâches$/])
+  await expect(barre.getByRole('button')).toHaveText(['Accueil', 'Magasins', 'Visites', 'Carnet', /Tâches$/])
   for (const l of await barre.getByRole('button').all()) expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(48)
   const plus = page.locator('.MuiFab-root[aria-label="Ajouter"]')
   expect((await plus.boundingBox())!.height).toBeGreaterThanOrEqual(48)

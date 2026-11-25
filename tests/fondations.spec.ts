@@ -2,12 +2,12 @@ import { expect, test } from '@playwright/test'
 import { deplierGroupes, deplierPoint, COMPTE, seConnecter, simulerSupabase, textesTropPetits } from './supabase-simule'
 
 // Barre du bas sur téléphone : libellé court ; menu latéral sur PC : libellé long. Refonte vague 4 (Joseph, 10/11/2026,
-// 36A) : Accueil, Agenda, Magasins, Tâches dans la barre du bas (Messages retiré le 24/11/2026) ; Visites et Santé passent dans le menu du compte
+// 36A), revue le 25/11/2026 : Accueil, Magasins, Visites, Carnet, Tâches dans la barre du bas ; Agenda et Santé dans le menu du compte
 const principales = [
   { nom: 'Accueil', court: 'Accueil' },
-  { nom: 'Agenda', court: 'Agenda' },
   { nom: 'Magasins', court: 'Magasins' },
-  { nom: 'Visites', court: '' },
+  { nom: 'Visites', court: 'Visites' },
+  { nom: 'Carnet', court: 'Carnet' },
   { nom: 'Tâches', court: 'Tâches' },
   { nom: 'Santé du parc', court: '' },
 ]
@@ -51,7 +51,7 @@ test('chaque destination est accessible depuis la navigation', async ({ page, is
     await expect(titre).toBeAttached()
     if (nom !== 'Accueil') await expect(titre).toBeVisible()
   }
-  for (const nom of isMobile ? ['Visites', ...secondaires] : secondaires) {
+  for (const nom of isMobile ? ['Agenda', ...secondaires] : secondaires) {
     // 309 (18/11/2026) : sur PC, Équipe et Paramètres reviennent dans le menu latéral (rubrique Réglages) ;
     // sur téléphone, ils restent dans le menu du compte
     if (!isMobile) await nav.getByRole('button', { name: nom, exact: true }).click()
@@ -86,8 +86,8 @@ test('zones tactiles d’au moins 48 px sur téléphone', async ({ page, isMobil
   test.skip(!isMobile, 'téléphone uniquement')
   await seConnecter(page)
   const boutons = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('button')
-  await expect(boutons).toHaveCount(4)
-  await expect(boutons.nth(3)).toHaveAccessibleName(/^Tâches/)
+  await expect(boutons).toHaveCount(5)
+  await expect(boutons.nth(4)).toHaveAccessibleName(/^Tâches/)
   const creer = (await page.locator('.MuiFab-root[aria-label="Ajouter"]').boundingBox())!
   expect(creer.height).toBeGreaterThanOrEqual(48)
   for (const b of await boutons.all()) {
@@ -117,7 +117,7 @@ test('le menu a deux parties : la partie classique et Paramètres', async ({ pag
   if (isMobile) {
     await page.getByRole('button', { name: 'Mon compte' }).click()
     const menu = page.getByRole('menu')
-    await expect(menu.getByRole('menuitem', { name: 'Visites', exact: true })).toBeVisible()
+    await expect(menu.getByRole('menuitem', { name: 'Agenda', exact: true })).toBeVisible()
     await expect(menu.getByText('Paramètres', { exact: true }).first()).toBeVisible()
     return
   }
@@ -139,9 +139,9 @@ test('Équipe ouvre le groupe Réglages', async ({ page, isMobile }) => {
     // Juste sous le titre « Réglages » ; la partie classique (au-dessus) ne le contient pas
     const titre = menu.locator('li', { hasText: /^Réglages$/ }).first()
     await expect(titre.locator('xpath=following-sibling::*[1]')).toHaveText('Équipe')
-    // 308 (18/11/2026) : Magasins est dans la barre du bas, la rubrique Réseau commence par Santé du parc
-    await expect(menu.getByRole('menuitem').nth(0)).toHaveText('Santé du parc')
-    await expect(menu.getByRole('menuitem').nth(1)).toHaveText('Visites')
+    // 25/11/2026 : Magasins, Visites et Carnet sont dans la barre du bas ; le menu commence par l'Agenda, puis Santé du parc
+    await expect(menu.getByRole('menuitem').nth(0)).toHaveText('Agenda')
+    await expect(menu.getByRole('menuitem').nth(1)).toHaveText('Santé du parc')
   } else {
     // 309 (18/11/2026) : la rubrique Réglages est en bas du menu latéral, Équipe en premier
     const reglages = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('list').filter({ hasText: /^Réglages/ })

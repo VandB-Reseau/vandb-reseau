@@ -161,6 +161,6 @@ test('téléphone : les notifications se referment, un seul « + » sur Magasins
   await page.getByRole('button', { name: 'Mon compte' }).click()
   const menu = page.getByRole('menu')
   for (const r of ['Réseau', 'Animation', 'Réglages']) await expect(menu.getByText(r, { exact: true })).toBeVisible()
-  await expect(menu.getByRole('menuitem', { name: 'Visites' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Agenda', exact: true })).toBeVisible()
   await lisible(page, isMobile)
 })

@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Barre du bas de l'équipe sur téléphone (Joseph, 25/11/2026) : Accueil, Magasins, Visites, Carnet, Tâches. L'Agenda
+  passe dans le menu du compte (rubrique « Mon travail ») ; Visites et Carnet en sortent. Barre du franchisé inchangée.
+  Sans migration.
 - Carnet plus simple à écrire (Joseph, 25/11/2026). Barre d'écriture compacte en style messagerie
   (texte, micro, envoyer ; ton en pastille ; thèmes et collègues dans des menus, « @ » ouvre les collègues ;
   Ctrl+Entrée envoie), aussi pour répondre et dans la fenêtre « Nouvelle note ». Sur la page d'une visite, « Au carnet du
