@@ -17,7 +17,11 @@ async function modifierEmailRR(page: import('@playwright/test').Page) {
   // Fiche ouverte par son adresse : sur téléphone, l'onglet est derrière « Plus »
   await page.goto('./#/equipe/rr/rr1?vue=fiche')
   await expect(page.getByRole('heading', { level: 1, name: 'Alex NORD' })).toBeVisible()
-  await expect(page.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
+  // Joseph (25/11/2026) : la fiche personnelle s'ouvre par le picto (i) de l'en-tête
+  await page.getByRole('button', { name: 'Fiche personnelle' }).click()
+  const fiche = page.getByRole('dialog', { name: 'Fiche personnelle' })
+  await expect(fiche.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
+  await fiche.getByRole('button', { name: 'Fermer' }).click()
   await page.getByRole('button', { name: 'Modifier', exact: true }).click()
   const d = page.getByRole('dialog', { name: 'Modifier Alex NORD' })
   await d.getByLabel('Email').fill('alex.nord@exemple.test')

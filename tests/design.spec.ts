@@ -141,7 +141,8 @@ test('glisser une tâche vers la gauche la marque faite (téléphone)', async ({
 // Appeler, Message et Visite en pictos à côté du nom, sur PC comme sur téléphone
 for (const f of [
   { url: '/magasins/Nantes%20Test', nom: 'Nantes Test', etroit: true, pictos: ['Appeler', 'Avis Google'] },
-  { url: '/equipe/coach/In%C3%A8s%20EXEMPLE', nom: 'Inès EXEMPLE', pictos: ['Appeler', 'Écrire un message'] },
+  // 25/11/2026 : avec le picto (i) de la fiche personnelle, les pictos passent sous le nom sur téléphone, comme pour le magasin
+  { url: '/equipe/coach/In%C3%A8s%20EXEMPLE', nom: 'Inès EXEMPLE', etroit: true, pictos: ['Appeler', 'Écrire un message'] },
 ]) test(`pictos à côté du nom : ${f.nom}`, async ({ page, isMobile }, info) => {
   await seConnecter(page)
   await page.goto('./#' + f.url)
