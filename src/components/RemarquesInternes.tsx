@@ -1,70 +1,82 @@
-// Remarques internes d'une visite (Joseph 10/11/2026) : notes et appréciation de l'équipe, prises pendant ou après la
-// visite. Rangées dans le journal du magasin (rubrique « notes ») avec le numéro de la visite : jamais dans le compte
-// rendu, jamais renvoyées au franchisé.
+// Notes au carnet depuis une visite (Joseph 10/11/2026, puis 25/11/2026) : pendant ou après la visite, 2 ou 3 éléments
+// ajoutés au carnet du magasin avec la barre d'écriture du carnet (ton, thèmes, collègues prévenus), liés à la visite par
+// son numéro. Rangés dans la rubrique « notes » : jamais dans le compte rendu, jamais renvoyés au franchisé.
 import { useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import AddOutlined from '@mui/icons-material/AddOutlined'
 import DeleteOutline from '@mui/icons-material/DeleteOutlined'
 import LockOutlined from '@mui/icons-material/LockOutlined'
 import { Section } from './Section'
-import { Fenetre } from './EditionEquipe'
-import { Puces } from './Social'
-import { TexteDicte } from './Dictee'
+import { Pastille, useCouleurTon } from './Carnet'
+import { SaisieNote, type ContenuNote } from './SaisieNote'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
+import { monNomPorteur } from '../data/actions'
 import { enregistrerNoteMagasin, supprimerNoteMagasin } from '../data/chargement'
+import { collegues, libelleTheme, libelleTon, lienNote, nouvelIdNote, tonDe } from '../data/carnet'
 import { dateCourte } from '../lib/format'
-import type { Appreciation, Reseau, Visite } from '../data/modele'
-
-export const libelleAppreciation: Record<Appreciation, string> = { satisfaisante: 'Satisfaisante', mitigee: 'Mitigée', preoccupante: 'Préoccupante' }
-const couleur: Record<Appreciation, string> = { satisfaisante: 'success.main', mitigee: 'warning.dark', preoccupante: 'error.main' }
+import type { NoteMagasin, Reseau, Visite } from '../data/modele'
 
 export function RemarquesInternes({ reseau, magasin, visite, signaler }: { reseau: Reseau; magasin: string; visite: Visite; signaler: (m: string) => void }) {
   const { profil } = useAuth()
   const { recharger } = useReseau()
-  const [ouvert, setOuvert] = useState(false)
-  const [texte, setTexte] = useState('')
-  const [appreciation, setAppreciation] = useState<Appreciation | ''>('')
-  const notes = (reseau.notesMagasins[magasin] ?? []).filter((n) => visite.id != null && n.visite === visite.id).sort((a, b) => a.date.localeCompare(b.date))
+  const couleur = useCouleurTon()
+  const [occupe, setOccupe] = useState(false)
+  const moi = monNomPorteur(reseau, profil) || profil?.nom || ''
+  const notes = (reseau.notesMagasins[magasin] ?? []).filter((n) => visite.id != null && n.visite === visite.id).sort((a, b) => (a.quand ?? a.date).localeCompare(b.quand ?? b.date))
   if (visite.id == null) return null
-  const supprimer = async (id: string) => {
-    try { await supprimerNoteMagasin(magasin, id); await recharger(); signaler('Remarque supprimée.') }
-    catch { signaler('La remarque n’a pas pu être supprimée. Vérifie ta connexion et réessaie.') }
+  const agir = async (f: () => Promise<unknown>, ok: string, ko: string) => {
+    setOccupe(true)
+    try { await f(); await recharger(); signaler(ok); return true }
+    catch { signaler(ko); return false }
+    finally { setOccupe(false) }
+  }
+  const noter = ({ texte, ton, themes, mentions }: ContenuNote) => {
+    const note: NoteMagasin = { id: nouvelIdNote(), date: reseau.jour, quand: new Date().toISOString(), texte, par: moi, ton, visite: visite.id!, ...(themes.length ? { themes } : {}), ...(mentions.length ? { mentions } : {}) }
+    return agir(() => enregistrerNoteMagasin(magasin, note),
+      mentions.length ? `Ajouté au carnet. ${mentions.join(', ')} ${mentions.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Ajouté au carnet. Le franchisé ne le verra pas.',
+      'La note n’est pas enregistrée. Vérifie ta connexion, puis réessaie.')
   }
   return (
-    <Section titre="Remarques internes" action={<Button startIcon={<AddOutlined />} onClick={() => { setTexte(''); setAppreciation(''); setOuvert(true) }} sx={{ minHeight: 48 }}>Ajouter une remarque</Button>}>
-      <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: notes.length ? 1 : 0 }}>
-        <LockOutlined sx={{ fontSize: 18 }} />Visibles de l’équipe seulement, jamais du franchisé ni dans le compte rendu.
-      </Typography>
-      {notes.length > 0 && (
-        <Box component="ul" aria-label="Remarques internes de la visite" sx={{ listStyle: 'none', m: 0, p: 0 }}>
-          {notes.map((n) => (
-            <Box component="li" key={n.id} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                {n.appreciation && <Typography variant="body2" sx={{ fontWeight: 700, color: couleur[n.appreciation] }}>Appréciation : {libelleAppreciation[n.appreciation]}</Typography>}
-                {n.texte && <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{n.texte}</Typography>}
-                <Typography variant="body2" color="text.secondary">{[n.par, dateCourte(n.date)].filter(Boolean).join(' · ')}</Typography>
-              </Box>
-              <Tooltip title="Supprimer"><IconButton onClick={() => void supprimer(n.id)} aria-label="Supprimer la remarque"><DeleteOutline /></IconButton></Tooltip>
-            </Box>
-          ))}
+    <Section titre="Au carnet du magasin" action={<Button component={RouterLink} to={lienNote(magasin)} sx={{ minHeight: 48 }}>Ouvrir le carnet</Button>}>
+      <Box sx={{ display: 'grid', gap: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          <LockOutlined sx={{ fontSize: 18 }} />Pour l’équipe seulement, jamais dans le compte rendu.
+        </Typography>
+        {notes.length > 0 && (
+          <Box component="ul" aria-label="Notes de la visite" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+            {notes.map((n) => {
+              const t = tonDe(n)
+              return (
+                <Box component="li" key={n.id} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', py: 1, borderBottom: '1px solid', borderColor: 'divider', '&:last-of-type': { borderBottom: 0 } }}>
+                  <Box sx={{ pt: 0.75 }}><Pastille couleur={couleur(t).bord} /></Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    {n.texte && <Typography sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{n.texte}</Typography>}
+                    <Typography variant="body2" color="text.secondary">
+                      {[libelleTon(t), ...(n.themes ?? []).map(libelleTheme), n.par, dateCourte(n.date), n.mentions?.length ? `Prévenu${n.mentions.length > 1 ? 's' : ''} : ${n.mentions.join(', ')}` : ''].filter(Boolean).join(' · ')}
+                    </Typography>
+                  </Box>
+                  {(n.par === moi || n.par === profil?.nom) && (
+                    <Tooltip title="Supprimer">
+                      <IconButton disabled={occupe} aria-label="Supprimer la note" sx={{ width: 48, height: 48 }}
+                        onClick={() => void agir(() => supprimerNoteMagasin(magasin, n.id), 'Note supprimée.', 'La note n’a pas pu être supprimée. Vérifie ta connexion et réessaie.')}>
+                        <DeleteOutline />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+              )
+            })}
+          </Box>
+        )}
+        <Box component="section" aria-label="Nouvelle note de la visite" sx={{ border: 1, borderColor: 'divider', borderRadius: 3, p: 1 }}>
+          <SaisieNote label="Ajouter au carnet" autres={collegues(reseau, magasin, moi)} envoyer={noter} occupe={occupe || !moi} />
         </Box>
-      )}
-      {ouvert && (
-        <Fenetre titre="Remarque interne" ouvert onFermer={(m) => { setOuvert(false); if (m) signaler(m) }} valide={!!texte.trim() || !!appreciation}
-          enregistrer={async () => {
-            await enregistrerNoteMagasin(magasin, { id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, date: reseau.jour, texte: texte.trim(), par: profil?.nom ?? '', visite: visite.id!, ...(appreciation ? { appreciation } : {}) })
-            return 'Remarque enregistrée. Le franchisé ne la verra pas.'
-          }}>
-          <Puces label="Appréciation" valeur={appreciation} onChange={setAppreciation}
-            options={[{ v: '' as const, libelle: 'Aucune' }, ...(['satisfaisante', 'mitigee', 'preoccupante'] as const).map((v) => ({ v, libelle: libelleAppreciation[v] }))]} />
-          <TexteDicte label="Remarque" libelleDictee="Remarque" valeur={texte} changer={setTexte} autoFocus multiline minRows={3} />
-        </Fenetre>
-      )}
+      </Box>
     </Section>
   )
 }

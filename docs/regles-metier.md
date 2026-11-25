@@ -29,6 +29,10 @@ changement ; en cas de doute, lui poser la question plutôt que de trancher seul
   (rubrique Réseau) : toutes les notes du périmètre, tout le réseau pour le Directeur et la Direction, le secteur pour un
   RR, ses magasins pour un Coach. Les alertes et points à surveiller ouverts en tête ; « Je m'en occupe » met son nom
   sur la note (champ `prise`) jusqu'à la clôture.
+- **Écrire une note** (25/11/2026) : style messagerie, une barre compacte (texte, micro, envoyer) ; le ton (Alerte,
+  À surveiller, Positif, Info, « Info » par défaut) se choisit dans une pastille, thèmes et collègues prévenus dans des
+  menus ou en tapant « @ ». Depuis une visite (étapes Visite et Après), « Au carnet du magasin » ajoute des notes liées à
+  la visite (champ `visite`), qui remplacent les « remarques internes » et leur appréciation.
 - **Commentaires du budget** (25/11/2026) : toujours lus par le franchisé, plus de choix « Équipe seule ». Ceux écrits
   ainsi avant restent cachés au franchisé.
 

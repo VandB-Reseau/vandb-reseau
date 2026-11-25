@@ -11,11 +11,11 @@ import { caseDe, historiqueSante, type IdCritere, type Note } from '../data/sant
 import { NotesParAxe, PastilleCase } from './Sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Magasin, NoteMagasin, Reseau, TonNote } from '../data/modele'
-import { Choix, Pastille, useCouleurTon } from './Carnet'
+import { ReglagesNote, ResumeReglages } from './SaisieNote'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
 import { monNomPorteur } from '../data/actions'
-import { collegues, nouvelIdNote, THEMES, tonDe, TONS } from '../data/carnet'
+import { collegues, nouvelIdNote, tonDe } from '../data/carnet'
 import { TexteDicte } from './Dictee'
 import { ChampDate } from './ChampDate'
 
@@ -56,7 +56,6 @@ export function useEditionJournal(reseau: Reseau, m: Magasin, signaler: (message
 // magasins : note créée depuis le « + » (refonte vague 4, 42A), le magasin se choisit dans la fenêtre
 export function DialogNote({ magasin: initial, note, magasins, onFermer }: { magasin: string; note: NoteMagasin; magasins?: string[]; onFermer: (message?: string) => void }) {
   const { reseau } = useReseau()
-  const couleur = useCouleurTon()
   const [date, setDate] = useState(note.date)
   const [texte, setTexte] = useState(note.texte)
   const [magasin, setMagasin] = useState(initial)
@@ -82,9 +81,13 @@ export function DialogNote({ magasin: initial, note, magasins, onFermer }: { mag
       {magasins && <Autocomplete options={magasins} value={magasin || null} onChange={(_, v) => setMagasin(v ?? '')} renderInput={(p) => <TextField {...p} label="Magasin" />} />}
       <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <TexteDicte label="Note" libelleDictee="Note" valeur={texte} changer={setTexte} multiline minRows={4} autoFocus />
-      <Choix label="Ton" options={TONS.map((t) => ({ v: t.v, libelle: t.libelle, icone: <Pastille couleur={couleur(t.v).bord} /> }))} valeurs={[ton]} changer={(v) => setTon(v[0])} />
-      <Choix label="Thèmes" multiple options={THEMES} valeurs={themes} changer={setThemes} />
-      {autres.length > 0 && <Choix label="Prévenir" multiple options={autres.map((p) => ({ v: p.nom, libelle: p.nom }))} valeurs={prevenir} changer={setPrevenir} />}
+      {/* 25/11/2026 : ton, thèmes et collègues en une rangée, comme la barre du carnet */}
+      <Box sx={{ display: 'grid', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+          <ReglagesNote ton={ton} changerTon={setTon} themes={themes} changerThemes={setThemes} mentions={prevenir} changerMentions={setPrevenir} autres={autres} />
+        </Box>
+        <ResumeReglages themes={themes} mentions={prevenir} />
+      </Box>
     </Fenetre>
   )
 }

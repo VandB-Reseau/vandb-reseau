@@ -23,20 +23,19 @@ import ReplyOutlined from '@mui/icons-material/ReplyOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { Initiales } from './Social'
 import { VuesRapides, styleFiltre } from './VuesRapides'
-import { TexteDicte } from './Dictee'
+import { SaisieNote, type ContenuNote } from './SaisieNote'
 import { LigneVide, styleBloc } from './Section'
 import { useMessageAnnulable } from './Annulable'
 import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
 import { enregistrerNoteMagasin, modifierNoteMagasin, supprimerNoteMagasin } from '../data/chargement'
 import { monNomPorteur } from '../data/actions'
-import { aClore, collegues, instantNote, libelleTheme, libelleTon, lienNote, nouvelIdNote, ouverte, THEMES, tonDe, TONS } from '../data/carnet'
+import { aClore, collegues, instantNote, libelleTheme, libelleTon, lienNote, nouvelIdNote, ouverte, tonDe, TONS } from '../data/carnet'
 import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
 import { libelleTypeVisite, type Magasin, type NoteMagasin, type Reseau, type TonNote, type Visite } from '../data/modele'
 import { styleSignal } from '../theme/theme'
 import { dateCourte } from '../lib/format'
 
-const MAX = 3000
 const heure = (iso: string) => (iso.length > 10 ? new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '')
 const quandLisible = (iso: string) => [dateCourte(iso.slice(0, 10)), heure(iso)].filter(Boolean).join(', ')
 const mois = (iso: string) => new Date(`${iso.slice(0, 7)}-15T12:00:00`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
@@ -85,10 +84,6 @@ export function Carnet({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   const moi = monNomPorteur(reseau, profil) || profil?.nom || ''
   const notes = useMemo(() => reseau.notesMagasins[m.nom] ?? [], [reseau.notesMagasins, m.nom])
   const autres = collegues(reseau, m.nom, moi)
-  const [texte, setTexte] = useState('')
-  const [ton, setTon] = useState<TonNote>('info')
-  const [themes, setThemes] = useState<string[]>([])
-  const [prevenir, setPrevenir] = useState<string[]>([])
   const [occupe, setOccupe] = useState(false)
   const [filtre, setFiltre] = useState<Filtre>('tout')
 
@@ -114,10 +109,9 @@ export function Carnet({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     catch { signaler('La note n’est pas enregistrée. Vérifie ta connexion, puis réessaie.'); return false }
     finally { setOccupe(false) }
   }
-  const noter = async () => {
-    const note: NoteMagasin = { id: nouvelIdNote(), date: reseau.jour, quand: new Date().toISOString(), texte: texte.trim(), par: moi, ton, ...(themes.length ? { themes } : {}), ...(prevenir.length ? { mentions: prevenir } : {}) }
-    const fait = await agir(() => enregistrerNoteMagasin(m.nom, note), prevenir.length ? `Note enregistrée. ${prevenir.join(', ')} ${prevenir.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Note enregistrée.')
-    if (fait) { setTexte(''); setTon('info'); setThemes([]); setPrevenir([]) }
+  const noter = ({ texte, ton, themes, mentions }: ContenuNote) => {
+    const note: NoteMagasin = { id: nouvelIdNote(), date: reseau.jour, quand: new Date().toISOString(), texte, par: moi, ton, ...(themes.length ? { themes } : {}), ...(mentions.length ? { mentions } : {}) }
+    return agir(() => enregistrerNoteMagasin(m.nom, note), mentions.length ? `Note enregistrée. ${mentions.join(', ')} ${mentions.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Note enregistrée.')
   }
 
   // 6 derniers mois, par ton
@@ -129,12 +123,8 @@ export function Carnet({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 300px' }, alignItems: 'start' }}>
       <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
-        <Card component="section" aria-label="Nouvelle note" sx={{ ...styleBloc, display: 'grid', gap: 1, border: 2, borderColor: 'secondary.main' }}>
-          <TexteDicte label={`Note sur ${m.nom}`} libelleDictee="Note" valeur={texte} changer={(f) => setTexte((v) => f(v).slice(0, MAX))} multiline minRows={2} fullWidth />
-          <Choix label="Ton" options={TONS.map((t) => ({ v: t.v, libelle: t.libelle, icone: <Pastille couleur={couleur(t.v).bord} /> }))} valeurs={[ton]} changer={(v) => setTon(v[0])} />
-          <Choix label="Thèmes" multiple options={THEMES} valeurs={themes} changer={setThemes} />
-          {autres.length > 0 && <Choix label="Prévenir" multiple options={autres.map((p) => ({ v: p.nom, libelle: p.nom }))} valeurs={prevenir} changer={setPrevenir} />}
-          <Button variant="contained" disabled={occupe || !texte.trim() || !moi} onClick={() => void noter()} sx={{ justifySelf: 'start', minHeight: 48 }}>Noter</Button>
+        <Card component="section" aria-label="Nouvelle note" sx={{ ...styleBloc, p: 1.5 }}>
+          <SaisieNote label={`Note sur ${m.nom}`} autres={autres} envoyer={noter} occupe={occupe || !moi} />
         </Card>
 
         <Box sx={{ minWidth: 0 }}>
@@ -215,14 +205,14 @@ export function CarteNote({ reseau, magasin, note, moi, autres, occupe, agir, mi
 }) {
   const couleur = useCouleurTon()
   const t = tonDe(note)
-  const [reponse, setReponse] = useState<string | null>(null)
-  const [prevenir, setPrevenir] = useState<string[]>([])
+  const [repondant, setRepondant] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const visite = note.visite != null ? reseau.visites.find((v) => v.id === note.visite) : undefined
-  const repondre = async () => {
-    const r = { id: nouvelIdNote(), quand: new Date().toISOString(), texte: (reponse ?? '').trim(), par: moi, ...(prevenir.length ? { mentions: prevenir } : {}) }
-    const fait = await agir(() => modifierNoteMagasin(magasin, note.id, (n) => ({ ...n, reponses: [...(n.reponses ?? []), r] })), prevenir.length ? `Réponse envoyée. ${prevenir.join(', ')} ${prevenir.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Réponse envoyée.')
-    if (fait) { setReponse(null); setPrevenir([]) }
+  const repondre = async ({ texte, mentions }: ContenuNote) => {
+    const r = { id: nouvelIdNote(), quand: new Date().toISOString(), texte, par: moi, ...(mentions.length ? { mentions } : {}) }
+    const fait = await agir(() => modifierNoteMagasin(magasin, note.id, (n) => ({ ...n, reponses: [...(n.reponses ?? []), r] })), mentions.length ? `Réponse envoyée. ${mentions.join(', ')} ${mentions.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Réponse envoyée.')
+    if (fait) setRepondant(false)
+    return fait
   }
   // Ceux qui ont écrit sur la note sont déjà prévenus d'une réponse : on propose les autres
   const dejaDansLeFil = new Set([note.par, ...(note.reponses ?? []).map((x) => x.par)])
@@ -267,18 +257,11 @@ export function CarteNote({ reseau, magasin, note, moi, autres, occupe, agir, mi
       )}
       {note.prise && !note.close && <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>{note.prise.par === moi ? 'Tu t’en occupes' : `${note.prise.par || 'Un collègue'} s’en occupe`}{` depuis le ${dateCourte(note.prise.quand.slice(0, 10))}`}</Typography>}
       {note.close && <Typography variant="body2" color="text.secondary">{`Close par ${note.close.par || 'l’équipe'} le ${dateCourte(note.close.quand.slice(0, 10))}`}</Typography>}
-      {reponse !== null ? (
-        <Box sx={{ display: 'grid', gap: 1 }}>
-          <TexteDicte label="Ta réponse" libelleDictee="Réponse" valeur={reponse} changer={(f) => setReponse((v) => f(v ?? '').slice(0, MAX))} multiline minRows={2} autoFocus fullWidth />
-          {aPrevenir.length > 0 && <Choix label="Prévenir" multiple options={aPrevenir.map((p) => ({ v: p.nom, libelle: p.nom }))} valeurs={prevenir} changer={setPrevenir} />}
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="contained" disabled={occupe || !reponse.trim() || !moi} onClick={() => void repondre()} sx={{ minHeight: 48 }}>Répondre</Button>
-            <Button onClick={() => { setReponse(null); setPrevenir([]) }} sx={{ minHeight: 48 }}>Annuler</Button>
-          </Box>
-        </Box>
+      {repondant ? (
+        <SaisieNote label="Ta réponse" libelleEnvoi="Répondre" sansTon autoFocus autres={aPrevenir} envoyer={repondre} occupe={occupe || !moi} annuler={() => setRepondant(false)} />
       ) : (
         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Button size="small" startIcon={<ReplyOutlined />} onClick={() => setReponse('')} sx={{ minHeight: 48 }}>Répondre</Button>
+          <Button size="small" startIcon={<ReplyOutlined />} onClick={() => setRepondant(true)} sx={{ minHeight: 48 }}>Répondre</Button>
           {ouverte(note) && (!note.prise || note.prise.par === moi) && (
             <Button size="small" startIcon={note.prise ? undefined : <PanToolOutlined />} disabled={occupe || !moi} sx={{ minHeight: 48 }}
               onClick={() => void agir(() => modifierNoteMagasin(magasin, note.id, (n) => { const { prise: _p, ...reste } = n; void _p; return note.prise ? reste : { ...reste, prise: { par: moi, quand: new Date().toISOString() } } }),
