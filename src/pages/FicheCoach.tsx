@@ -15,7 +15,7 @@ import { ListeMagasins } from '../components/ListeMagasins'
 import { Contact, Section, LigneVide } from '../components/Section'
 import { chargeA, magasinsDuCoach } from '../data/charge'
 import { dateCourte, lienCoach, lienFiche, lienRR } from '../lib/format'
-import { SectionFichePersonnelle } from './FichePersonne'
+import { BoutonFichePersonnelle } from './FichePersonne'
 import { SectionAccesEquipe } from '../components/AccesEquipe'
 import { libelleTypeVisite, visiteFaite, type Coach, type Reseau } from '../data/modele'
 import IconButton from '@mui/material/IconButton'
@@ -92,6 +92,7 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
           { valeur: faitesAn, libelle: `visites ${a.court}` },
           { valeur: `${charge}/${reseau.parametres.maxUnits}`, libelle: 'charge', couleur: charge > reseau.parametres.maxUnits ? 'error.main' : undefined },
         ]}
+        icones={<BoutonFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />}
         telephone={fichePersonne(reseau, { type: 'coach', cle: coach.nom }).telephone || coach.telephone} lienMessage={coach.fictif ? undefined : lienPersonne(`coach:${coach.nom}`)} modifier={referentiels ? () => setEdition(true) : undefined} />
       <Onglets valeur={vue} onChange={changerVue} rubriques={rubriquesCoach} libelle={`Rubriques de ${coach.nom}`} fiche />
       <ContenuOnglet>
@@ -103,7 +104,6 @@ function Fiche({ coach, reseau }: { coach: Coach; reseau: Reseau }) {
               <Section titre="Rattachement">
                 <Contact role={coach.rr?.integres ? 'Responsable Magasins Intégrés' : 'Responsable Régional'} p={coach.rr} lien={coach.rr ? lienRR(coach.rr.id) : undefined} sousTitre={coach.rr ? undefined : 'Non rattaché à ce jour'} />
               </Section>
-              <SectionFichePersonnelle reseau={reseau} r={{ type: 'coach', cle: coach.nom }} />
               {!surPC && referentiels && !coach.fictif && <BoutonDepart bouton reseau={reseau} personne={{ type: 'coach', cle: coach.nom }} nom={coach.nom} signaler={setMessage} />}
               {referentiels && !coach.fictif && <SectionAccesEquipe role="coach" cle={coach.nom} nom={coach.nom} signaler={setMessage} />}
             </Box>

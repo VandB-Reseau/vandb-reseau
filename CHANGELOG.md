@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Fiche d'un Coach ou d'un Responsable Régional : la fiche personnelle quitte la Vue d'ensemble et s'ouvre par le picto (i)
+  de l'en-tête (« Fiche personnelle » sur PC), dans un panneau à droite, comme « Infos du magasin » (Joseph, 25/11/2026).
+  Sans migration.
 - Accès « Direction » en lecture (Joseph, 24/11/2026, lot 2 après le carnet). **Base : réseau 0054
   (`0054_acces_direction.sql`) et pilotage 0038 (`0038_acces_direction.sql`, dépôt du pilotage), dans l'ordre qu'on veut,
   après 0053.** Un DG ou un autre accès donné par le Directeur (Équipe › Organisation › « Accès Direction ») lit tout le

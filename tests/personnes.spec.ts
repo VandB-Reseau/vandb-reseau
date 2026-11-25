@@ -28,9 +28,15 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   await page.getByRole('tab', { name: /^(Coachs et magasins|Magasins)$/ }).click()
   await expect(page.getByRole('link', { name: 'Camille TESTARD', exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Vue d’ensemble' }).click()
-  await expect(page.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
-  await expect(page.getByText('59 · Nord')).toBeVisible()
+  // Joseph (25/11/2026) : la fiche personnelle s'ouvre par le picto (i) de l'en-tête, comme « Infos du magasin »
+  await expect(page.getByText(/12 avril 1980 · \d+ ans/)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Fiche personnelle' }).click()
+  const fiche = page.getByRole('dialog', { name: 'Fiche personnelle' })
+  await expect(fiche.getByText(/12 avril 1980 · \d+ ans/)).toBeVisible()
+  await expect(fiche.getByText('59 · Nord')).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
+  await fiche.getByRole('button', { name: 'Fermer' }).click()
+  await expect(fiche).toHaveCount(0)
   await page.screenshot({ path: `captures/${info.project.name}-fiche-rr.png`, fullPage: !isMobile })
 
   await page.goto('./#/equipe/directeur')
@@ -39,8 +45,10 @@ test('l’organigramme ne modifie plus rien : chaque personne s’ouvre sur sa f
   await expect(page.getByRole('link', { name: 'Sam SUD' })).toBeVisible()
 
   await page.goto('./#/equipe/coach/Camille%20TESTARD?vue=fiche')
-  await expect(page.getByRole('heading', { name: 'Fiche personnelle' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Alex NORD', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Fiche personnelle' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Fiche personnelle' }).click()
+  await expect(page.getByRole('dialog', { name: 'Fiche personnelle' }).getByRole('heading', { name: 'Informations' })).toBeVisible()
 })
 
 test('fiche d’un Responsable Régional : champs personnels et département rempli seul', async ({ page }, info) => {
