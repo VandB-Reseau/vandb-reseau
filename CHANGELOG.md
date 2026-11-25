@@ -9,6 +9,9 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Équipements lisibles sur téléphone (Joseph, 25/11/2026) : nom et compteur sur la même ligne, année et prix en
+  dessous seulement pour un équipement présent, libellés courts (« Année », « Prix HT ») qui ne passent plus sous le €.
+  Rendu PC inchangé. **Sans migration.**
 - Pilotage et Réseau réunis dans ce dépôt, documentation pour un développeur (Joseph, 25/11/2026). **Sans migration à
   passer** : les 38 migrations du schéma `pilotage` sont rangées à l'identique dans `supabase/migrations/pilotage/`
   (historique figé), et toute nouvelle migration prend le numéro suivant de la série unique (prochaine libre 0055).
