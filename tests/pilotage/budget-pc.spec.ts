@@ -97,12 +97,12 @@ test('les commentaires s’ouvrent en marge (volet sur téléphone), à la deman
     expect(await textesTropPetits(page)).toEqual([])
     await marge.getByRole('button', { name: 'Fermer les commentaires' }).click()
     await expect(marge).toBeHidden()
-    // La bulle d'un point ouvre la marge à sa hauteur, le champ prêt à écrire, « Équipe seule » d'office
+    // La bulle d'un point ouvre la marge à sa hauteur, le champ prêt à écrire ; plus de choix « Équipe seule » (25/11/2026)
     const bulle = page.getByRole('button', { name: `Commenter : Résultat et trésorerie 2027` })
     await bulle.click()
     const champ = marge.getByRole('textbox', { name: 'Commenter : Résultat et trésorerie 2027' })
     await expect(champ).toBeFocused()
-    await expect(marge.getByRole('group', { name: 'Qui lit ce commentaire' }).getByRole('button', { name: 'Équipe seule' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(marge.getByRole('group', { name: 'Qui lit ce commentaire' })).toHaveCount(0)
     await page.keyboard.press('Escape')
     await expect(marge).toBeHidden()
     return

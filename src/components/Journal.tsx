@@ -11,8 +11,6 @@ import { caseDe, historiqueSante, type IdCritere, type Note } from '../data/sant
 import { NotesParAxe, PastilleCase } from './Sante'
 import { dateCourte, lienFiche } from '../lib/format'
 import type { Magasin, NoteMagasin, Reseau, TonNote } from '../data/modele'
-import Typography from '@mui/material/Typography'
-import LockOutlined from '@mui/icons-material/LockOutlined'
 import { Choix, Pastille, useCouleurTon } from './Carnet'
 import { useReseau } from '../data/ReseauContext'
 import { useAuth } from '../auth/AuthContext'
@@ -75,15 +73,12 @@ export function DialogNote({ magasin: initial, note, magasins, onFermer }: { mag
         if (!themes.length) delete n.themes
         if (!mentions.length) delete n.mentions
         // Choix 114 : une nouvelle note se garde sur l'appareil sans réseau
-        if (!note.id) return (await creerOuGarder('note', `Note · ${magasin}`, { magasin, note: n }, () => enregistrerNoteMagasin(magasin, n))) ? 'Note gardée sur l’appareil : elle partira seule au retour du réseau.' : 'Note enregistrée. Le franchisé ne la verra pas.'
+        if (!note.id) return (await creerOuGarder('note', `Note · ${magasin}`, { magasin, note: n }, () => enregistrerNoteMagasin(magasin, n))) ? 'Note gardée sur l’appareil : elle partira seule au retour du réseau.' : 'Note enregistrée.'
         await enregistrerNoteMagasin(magasin, n)
         return 'Note enregistrée.'
       }}
       supprimer={note.id ? async () => { await supprimerNoteMagasin(magasin, note.id); return 'Note supprimée.' } : undefined}
       libelleSuppression="Supprimer cette note du carnet ?">
-      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontWeight: 700, color: 'warning.dark' }}>
-        <LockOutlined sx={{ fontSize: 18 }} />Équipe seule, jamais le franchisé
-      </Typography>
       {magasins && <Autocomplete options={magasins} value={magasin || null} onChange={(_, v) => setMagasin(v ?? '')} renderInput={(p) => <TextField {...p} label="Magasin" />} />}
       <ChampDate label="Date" value={date} onChange={(e) => setDate(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
       <TexteDicte label="Note" libelleDictee="Note" valeur={texte} changer={setTexte} multiline minRows={4} autoFocus />

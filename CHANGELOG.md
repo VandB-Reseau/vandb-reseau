@@ -9,6 +9,11 @@ Les sprints 0 à 4 (14/10/2026) ont précédé le transfert du dépôt et n'ont 
 
 ## À venir
 
+- Carnet du réseau (Joseph, 25/11/2026). **Sans migration.** Page « Carnet » dans la rubrique Réseau : les notes des
+  carnets du périmètre (tout le réseau pour le Directeur et la Direction, le secteur d'un RR, les magasins d'un Coach),
+  ce qui reste à traiter en tête avec « Je m'en occupe », le fil filtré Tout / À clore / Me concernent, répondre et clore
+  sur place. Plus de mention « Équipe seule » dans le carnet ; les commentaires du budget sont toujours lus par le
+  franchisé (choix « Équipe seule » retiré).
 - Équipements lisibles sur téléphone (Joseph, 25/11/2026) : nom et compteur sur la même ligne, année et prix en
   dessous seulement pour un équipement présent, libellés courts (« Année », « Prix HT ») qui ne passent plus sous le €.
   Rendu PC inchangé. **Sans migration.**

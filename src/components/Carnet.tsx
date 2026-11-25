@@ -10,14 +10,15 @@ import ButtonBase from '@mui/material/ButtonBase'
 import Card from '@mui/material/Card'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import Link from '@mui/material/Link'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import CheckOutlined from '@mui/icons-material/CheckOutlined'
 import DeleteOutline from '@mui/icons-material/DeleteOutlined'
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
-import LockOutlined from '@mui/icons-material/LockOutlined'
 import NotificationsActiveOutlined from '@mui/icons-material/NotificationsActiveOutlined'
+import PanToolOutlined from '@mui/icons-material/PanToolOutlined'
 import ReplyOutlined from '@mui/icons-material/ReplyOutlined'
 import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { Initiales } from './Social'
@@ -29,7 +30,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useReseau } from '../data/ReseauContext'
 import { enregistrerNoteMagasin, modifierNoteMagasin, supprimerNoteMagasin } from '../data/chargement'
 import { monNomPorteur } from '../data/actions'
-import { aClore, collegues, instantNote, libelleTheme, libelleTon, nouvelIdNote, ouverte, THEMES, tonDe, TONS } from '../data/carnet'
+import { aClore, collegues, instantNote, libelleTheme, libelleTon, lienNote, nouvelIdNote, ouverte, THEMES, tonDe, TONS } from '../data/carnet'
 import { lienCompteRendu, visitesDuMagasin } from '../data/visites'
 import { libelleTypeVisite, type Magasin, type NoteMagasin, type Reseau, type TonNote, type Visite } from '../data/modele'
 import { styleSignal } from '../theme/theme'
@@ -115,7 +116,7 @@ export function Carnet({ reseau, m }: { reseau: Reseau; m: Magasin }) {
   }
   const noter = async () => {
     const note: NoteMagasin = { id: nouvelIdNote(), date: reseau.jour, quand: new Date().toISOString(), texte: texte.trim(), par: moi, ton, ...(themes.length ? { themes } : {}), ...(prevenir.length ? { mentions: prevenir } : {}) }
-    const fait = await agir(() => enregistrerNoteMagasin(m.nom, note), prevenir.length ? `Note enregistrée. ${prevenir.join(', ')} ${prevenir.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Note enregistrée. Le franchisé ne la verra pas.')
+    const fait = await agir(() => enregistrerNoteMagasin(m.nom, note), prevenir.length ? `Note enregistrée. ${prevenir.join(', ')} ${prevenir.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Note enregistrée.')
     if (fait) { setTexte(''); setTon('info'); setThemes([]); setPrevenir([]) }
   }
 
@@ -129,9 +130,6 @@ export function Carnet({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 300px' }, alignItems: 'start' }}>
       <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
         <Card component="section" aria-label="Nouvelle note" sx={{ ...styleBloc, display: 'grid', gap: 1, border: 2, borderColor: 'secondary.main' }}>
-          <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, fontWeight: 700, color: 'warning.dark' }}>
-            <LockOutlined sx={{ fontSize: 18 }} />Équipe seule, jamais le franchisé
-          </Typography>
           <TexteDicte label={`Note sur ${m.nom}`} libelleDictee="Note" valeur={texte} changer={(f) => setTexte((v) => f(v).slice(0, MAX))} multiline minRows={2} fullWidth />
           <Choix label="Ton" options={TONS.map((t) => ({ v: t.v, libelle: t.libelle, icone: <Pastille couleur={couleur(t.v).bord} /> }))} valeurs={[ton]} changer={(v) => setTon(v[0])} />
           <Choix label="Thèmes" multiple options={THEMES} valeurs={themes} changer={setThemes} />
@@ -210,9 +208,10 @@ function LigneCompteRendu({ v }: { v: Visite }) {
   )
 }
 
-function CarteNote({ reseau, magasin, note, moi, autres, occupe, agir, mise }: {
+// avecMagasin : carte lue dans le carnet du réseau (page Carnet), le magasin en tête avec le lien vers son carnet
+export function CarteNote({ reseau, magasin, note, moi, autres, occupe, agir, mise, avecMagasin }: {
   reseau: Reseau; magasin: string; note: NoteMagasin; moi: string; autres: { nom: string }[]; occupe: boolean
-  agir: (f: () => Promise<unknown>, ok: string, annuler?: () => void) => Promise<boolean>; mise: boolean
+  agir: (f: () => Promise<unknown>, ok: string, annuler?: () => void) => Promise<boolean>; mise: boolean; avecMagasin?: boolean
 }) {
   const couleur = useCouleurTon()
   const t = tonDe(note)
@@ -231,6 +230,10 @@ function CarteNote({ reseau, magasin, note, moi, autres, occupe, agir, mise }: {
   return (
     <Card ref={ref} id={`note-${note.id}`} component="article" aria-label={`Note ${libelleTon(t).toLowerCase()} du ${dateCourte(note.date)}${note.par ? ` par ${note.par}` : ''}`}
       sx={{ ...styleBloc, display: 'grid', gap: 0.75, borderLeft: 4, borderLeftColor: couleur(t).bord, scrollMarginTop: 120, ...(mise ? { outline: 2, outlineStyle: 'solid', outlineColor: 'secondary.main' } : {}), opacity: note.close ? 0.85 : 1 }}>
+      {avecMagasin && (
+        <Link component={RouterLink} to={lienNote(magasin, note.id)} underline="hover" sx={{ fontWeight: 700, fontSize: '1rem', color: 'text.primary', justifySelf: 'start', minHeight: { xs: 48, md: 'auto' }, display: 'inline-flex', alignItems: 'center' }}
+          aria-label={`Carnet de ${magasin}`}>{magasin}</Link>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <Initiales nom={note.par || '?'} taille={32} />
         <Typography sx={{ fontWeight: 700 }}>{note.par || 'Équipe'}</Typography>
@@ -262,6 +265,7 @@ function CarteNote({ reseau, magasin, note, moi, autres, occupe, agir, mise }: {
           ))}
         </Box>
       )}
+      {note.prise && !note.close && <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>{note.prise.par === moi ? 'Tu t’en occupes' : `${note.prise.par || 'Un collègue'} s’en occupe`}{` depuis le ${dateCourte(note.prise.quand.slice(0, 10))}`}</Typography>}
       {note.close && <Typography variant="body2" color="text.secondary">{`Close par ${note.close.par || 'l’équipe'} le ${dateCourte(note.close.quand.slice(0, 10))}`}</Typography>}
       {reponse !== null ? (
         <Box sx={{ display: 'grid', gap: 1 }}>
@@ -275,6 +279,13 @@ function CarteNote({ reseau, magasin, note, moi, autres, occupe, agir, mise }: {
       ) : (
         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button size="small" startIcon={<ReplyOutlined />} onClick={() => setReponse('')} sx={{ minHeight: 48 }}>Répondre</Button>
+          {ouverte(note) && (!note.prise || note.prise.par === moi) && (
+            <Button size="small" startIcon={note.prise ? undefined : <PanToolOutlined />} disabled={occupe || !moi} sx={{ minHeight: 48 }}
+              onClick={() => void agir(() => modifierNoteMagasin(magasin, note.id, (n) => { const { prise: _p, ...reste } = n; void _p; return note.prise ? reste : { ...reste, prise: { par: moi, quand: new Date().toISOString() } } }),
+                note.prise ? 'Tu ne t’en occupes plus.' : 'C’est noté : tu t’en occupes.')}>
+              {note.prise ? 'Ne plus m’en occuper' : 'Je m’en occupe'}
+            </Button>
+          )}
           {aClore(note) && (
             <Button size="small" startIcon={note.close ? undefined : <TaskAltOutlined />} disabled={occupe || !moi} sx={{ minHeight: 48 }}
               onClick={() => void agir(() => modifierNoteMagasin(magasin, note.id, (n) => { const { close: _c, ...reste } = n; void _c; return note.close ? reste : { ...reste, close: { par: moi, quand: new Date().toISOString() } } }),

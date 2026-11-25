@@ -20,7 +20,7 @@ test('Réglages en deux entrées : Équipe, Paramètres', async ({ page, isMobil
     for (const l of ['Équipe', 'Paramètres']) await expect(menu.getByRole('button', { name: l, exact: true })).toBeVisible()
     // Joseph (23/11/2026) : Évolution du parc dans la rubrique Réseau, sous Visites
     const reseau = menu.getByRole('list').filter({ has: page.getByText('Réseau', { exact: true }) })
-    await expect(reseau.getByRole('button')).toHaveText(['Magasins', 'Santé du parc', 'Visites', 'Évolution du parc'])
+    await expect(reseau.getByRole('button')).toHaveText(['Magasins', 'Santé du parc', 'Visites', 'Carnet', 'Évolution du parc'])
     for (const l of ['Charge des Coachs', 'Collaborateurs', 'Franchisés', 'Import et export']) await expect(menu.getByRole('button', { name: l, exact: true })).toHaveCount(0)
   }
   const sommaire = page.getByRole('region', { name: 'Rubriques des paramètres' })
