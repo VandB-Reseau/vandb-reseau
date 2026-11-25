@@ -209,7 +209,7 @@ test('42A : barre du téléphone et journée du Coach', async ({ page, isMobile 
   await page.getByRole('button', { name: 'Ajouter', exact: true }).click()
   await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').first()).toHaveText('Visite')
   await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(1)).toHaveText('Appel')
-  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(2)).toHaveText('Note')
+  await expect(page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem').nth(2)).toHaveText('Tâche')
   await lisible(page, isMobile, false)
 })
 

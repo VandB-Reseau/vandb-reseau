@@ -32,13 +32,14 @@ test('ajouter, modifier et supprimer une note du journal', async ({ page }) => {
   const ecritures: Ecriture[] = []
   await seConnecter(page, { ecritures })
   await page.goto('./#/magasins/Lyon%20Test?vue=journal')
-  // Vague 7 : la note s'ajoute par le « + » de la fiche
+  // 25/11/2026 : le « + » de la fiche mène au carnet, la note s'y écrit
   await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Note', exact: true }).click()
-  const d = page.getByRole('dialog', { name: 'Nouvelle note' })
-  await d.getByLabel('Note', { exact: true }).fill('Franchisé motivé par la terrasse.')
-  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await page.getByRole('menuitem', { name: 'Note au carnet' }).click()
+  const barre = page.getByRole('region', { name: 'Nouvelle note' })
+  await barre.getByRole('textbox', { name: 'Note sur Lyon Test' }).fill('Franchisé motivé par la terrasse.')
+  await barre.getByRole('button', { name: 'Noter' }).click()
   await expect(page.getByText('Note enregistrée.')).toBeVisible()
+  await page.goto('./#/magasins/Lyon%20Test?vue=journal')
   const ajout = ecritures.filter((e) => e.table === 'app_config').at(-1)!
   expect(JSON.stringify(ajout.corps)).toContain('Franchisé motivé par la terrasse.')
   expect(JSON.stringify(ajout.corps)).toContain('travaux de vitrine')

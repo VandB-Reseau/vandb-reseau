@@ -8,7 +8,8 @@ import RequestQuoteOutlined from '@mui/icons-material/RequestQuoteOutlined'
 import { OngletBudget } from '../components/OngletBudget'
 import { Carnet } from '../components/Carnet'
 import LockOutlined from '@mui/icons-material/LockOutlined'
-import { ouverte as noteOuverte } from '../data/carnet'
+import { lienNote, ouverte as noteOuverte } from '../data/carnet'
+import { useCreer } from '../components/Creer'
 import { GroupeBudgetaire } from '../components/GroupeBudgetaire'
 import StarOutlined from '@mui/icons-material/StarOutlined'
 import ReviewsOutlined from '@mui/icons-material/ReviewsOutlined'
@@ -229,6 +230,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
   const destination = adresseComplete ? `V and B ${m.nom} ${adresseComplete}` : m.lat !== null && m.lon !== null ? `${m.lat},${m.lon}` : ''
   const lienItineraire = destination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}` : null
   const lienPlan = adresseComplete ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`V and B ${m.nom} ${adresseComplete}`)}` : null
+  const creerGlobal = useCreer()
   const saisirVisite = () => { setTypeVisite('terrain'); setVisite(null) }
   const { referentiels } = useDroits()
   const ex = m.exploitation
@@ -242,7 +244,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
       </Box>
       <ProfilMagasin retour={{ libelle: 'Magasins', aller: () => (window.history.length > 1 ? naviguer(-1) : naviguer('/magasins')) }} m={m} reseau={reseau}
         appeler={m.telephone || m.responsable?.telephone || ''} message={conversation.ouvrir}
-        creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => { setTypeVisite('appel'); setVisite(null) }, note: journal.nouvelleNote, pratique: () => setNouvellePratique(true) }}
+        creer={{ visite: saisirVisite, tache: () => setNouvelleTache(true), appel: () => creerGlobal('appel', m.nom), note: () => naviguer(`${lienNote(m.nom)}&ecrire=1`), pratique: () => setNouvellePratique(true) }}
         modifier={referentiels ? () => setEdition(true) : undefined} fermer={referentiels ? () => setSituation(true) : undefined}
         infos={() => setInfos(true)} lienItineraire={lienItineraire} />
       {conversation.panneau}
@@ -336,7 +338,7 @@ function Fiche({ m, reseau }: { m: Magasin; reseau: Reseau }) {
 
         {vue === 'chiffres' && <OngletBudget nom={m.nom} mode="chiffres" sante={
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)' }}>
-            <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => { setTypeVisite('appel'); setVisite(null) }} />
+            <SectionChiffres reseau={reseau} m={m} saisir={(mois) => setSaisieChiffres(mois ?? null)} appeler={() => creerGlobal('appel', m.nom)} />
             <SectionRedressement reseau={reseau} m={m} />
             <SectionExterieur reseau={reseau} m={m} />
             <SectionLeviers reseau={reseau} m={m} />
@@ -723,7 +725,7 @@ function etatConcept20(reseau: Reseau, magasin: string): 'fait' | 'enCours' | nu
 }
 
 // Vague 7 (79A et retour de Joseph, 10/11/2026) : un seul jeu d'actions dans l'en-tête. Le bouton « Visite » dit la prochaine
-// étape ; « + » ajoute une visite non prévue, une tâche, un appel ou une note
+// étape ; « + » ajoute une visite non prévue, une tâche, un appel ou une note (dans le carnet, 25/11/2026)
 interface MenuCreer { visite: () => void; tache: () => void; appel: () => void; note: () => void; pratique: () => void }
 function MenuAjouter({ creer }: { creer: MenuCreer }) {
   const [ancre, setAncre] = useState<HTMLElement | null>(null)
@@ -735,7 +737,7 @@ function MenuAjouter({ creer }: { creer: MenuCreer }) {
         <MenuItem onClick={choisir(creer.tache)} sx={{ minHeight: 48 }}><ListItemIcon><AddTaskOutlined /></ListItemIcon>Tâche</MenuItem>
         <MenuItem onClick={choisir(creer.visite)} sx={{ minHeight: 48 }}><ListItemIcon><RateReviewOutlined /></ListItemIcon>Visite non prévue</MenuItem>
         <MenuItem onClick={choisir(creer.appel)} sx={{ minHeight: 48 }}><ListItemIcon><PhoneInTalkOutlined /></ListItemIcon>Appel</MenuItem>
-        <MenuItem onClick={choisir(creer.note)} sx={{ minHeight: 48 }}><ListItemIcon><EditOutlined /></ListItemIcon>Note</MenuItem>
+        <MenuItem onClick={choisir(creer.note)} sx={{ minHeight: 48 }}><ListItemIcon><EditOutlined /></ListItemIcon>Note au carnet</MenuItem>
         {/* Joseph (13/11/2026) : la bonne pratique s'ajoute depuis le « + » du magasin */}
         <MenuItem onClick={choisir(creer.pratique)} sx={{ minHeight: 48 }}><ListItemIcon><TipsAndUpdatesOutlined /></ListItemIcon>Bonne pratique</MenuItem>
       </Menu>

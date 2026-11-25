@@ -33,6 +33,12 @@ changement ; en cas de doute, lui poser la question plutôt que de trancher seul
   À surveiller, Positif, Info, « Info » par défaut) se choisit dans une pastille, thèmes et collègues prévenus dans des
   menus ou en tapant « @ ». Depuis une visite (étapes Visite et Après), « Au carnet du magasin » ajoute des notes liées à
   la visite (champ `visite`), qui remplacent les « remarques internes » et leur appréciation.
+- **Plus de note à la volée** (25/11/2026) : une note s'écrit dans le carnet ; « Note » quitte le « + » général et la
+  recherche, le « + » de la fiche propose « Note au carnet » (le carnet s'ouvre, prêt à écrire). Les notes déjà saisies
+  étaient rangées au même endroit : rien à reprendre.
+- **Compte rendu d'échange** (25/11/2026) : « Appel » ouvre une petite fenêtre (Appel ou Point, date, ce qui s'est dit),
+  sans titre, sans signature, sans envoi. Rangé comme une visite de type `appel` ou `point`, lu dans le carnet et
+  l'historique du magasin ; jamais renvoyé au franchisé (types écartés par `espace_franchise()`).
 - **Commentaires du budget** (25/11/2026) : toujours lus par le franchisé, plus de choix « Équipe seule ». Ceux écrits
   ainsi avant restent cachés au franchisé.
 

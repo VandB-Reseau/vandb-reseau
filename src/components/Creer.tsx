@@ -16,15 +16,12 @@ import { brand } from '../theme/theme'
 import { DialogVisite } from './DialogVisite'
 import { DialogAction } from './Actions'
 import { DialogPratique } from './BonnesPratiques'
-import { DialogNote } from './Journal'
-import { monNom } from './AgendaAbonne'
-import { useAuth } from '../auth/AuthContext'
+import { DialogEchange } from './DialogEchange'
 import PhoneOutlined from '@mui/icons-material/PhoneOutlined'
-import StickyNote2Outlined from '@mui/icons-material/StickyNote2Outlined'
 import { useReseau } from '../data/ReseauContext'
 import { chargementDiffere } from '../lib/chargementDiffere'
 
-export type Choix = 'visite' | 'appel' | 'note' | 'tache' | 'pratique' | 'evenement'
+export type Choix = 'visite' | 'appel' | 'tache' | 'pratique' | 'evenement'
 
 // Absences retirées de l'app (Joseph, 22/10/2026)
 // Fenêtre d'événement : chargée avec l'Agenda, seulement quand on la demande
@@ -34,7 +31,7 @@ const choixCreer: { id: Choix | 'message'; libelle: string; icone: ReactElement;
   // Refonte vague 4 (Joseph 10/11/2026, 42A) : les gestes du terrain d'abord, Visite, Appel, Note, Tâche, Photo
   { id: 'visite', libelle: 'Visite', icone: <EventNoteOutlined fontSize="small" />, fond: brand.noir, texte: '#ffffff' },
   { id: 'appel', libelle: 'Appel', icone: <PhoneOutlined fontSize="small" />, fond: brand.vertFonce, texte: '#ffffff' },
-  { id: 'note', libelle: 'Note', icone: <StickyNote2Outlined fontSize="small" />, fond: brand.brique, texte: '#ffffff' },
+  // Plus de « Note » à la volée (Joseph, 25/11/2026) : une note s'écrit dans le carnet du magasin
   { id: 'tache', libelle: 'Tâche', icone: <TaskAltOutlined fontSize="small" />, fond: brand.or, texte: brand.noir },
   { id: 'pratique', libelle: 'Photo', icone: <PhotoCameraOutlined fontSize="small" />, fond: brand.orange, texte: brand.noir },
   // Messagerie cachée (Joseph, 24/11/2026) : les échanges avec les franchisés restent sur WhatsApp ; la note va au carnet
@@ -49,7 +46,6 @@ export const useCreer = () => useContext(ContexteCreer)
 
 export function CreerProvider({ children }: { children: ReactNode }) {
   const { reseau } = useReseau()
-  const { profil } = useAuth()
   const naviguer = useNavigate()
   const [choix, setChoix] = useState<{ c: Choix; magasin?: string } | null>(null)
   const [confirmation, setConfirmation] = useState('')
@@ -61,8 +57,9 @@ export function CreerProvider({ children }: { children: ReactNode }) {
   return (
     <ContexteCreer.Provider value={creer}>
       {children}
-      {reseau && (choix?.c === 'visite' || choix?.c === 'appel') && <DialogVisite reseau={reseau} visite={null} typeInitial={choix.c === 'appel' ? 'appel' : 'terrain'} magasinsInitiaux={choix.magasin ? [choix.magasin] : undefined} onFermer={fermer} />}
-      {reseau && choix?.c === 'note' && <DialogNote magasin={choix.magasin ?? ''} magasins={choix.magasin ? undefined : reseau.magasins.map((m) => m.nom).sort((a, b) => a.localeCompare(b, 'fr'))} note={{ id: '', date: reseau.jour, texte: '', par: monNom(reseau, profil) || profil?.nom || '' }} onFermer={fermer} />}
+      {reseau && choix?.c === 'visite' && <DialogVisite reseau={reseau} visite={null} magasinsInitiaux={choix.magasin ? [choix.magasin] : undefined} onFermer={fermer} />}
+      {/* Appel (Joseph, 25/11/2026) : un compte rendu d'échange léger, pas la saisie d'une visite */}
+      {reseau && choix?.c === 'appel' && <DialogEchange reseau={reseau} magasin={choix.magasin} onFermer={fermer} />}
       {reseau && choix?.c === 'tache' && <DialogAction reseau={reseau} magasins={choix.magasin ? [choix.magasin] : reseau.magasins.map((m) => m.nom)} action={null} onFermer={fermer} />}
       {reseau && choix?.c === 'pratique' && <DialogPratique reseau={reseau} pratique={null} onFermer={fermer} />}
       {reseau && choix?.c === 'evenement' && <Suspense fallback={null}><DialogEvenement reseau={reseau} evenement={null} onFermer={fermer} /></Suspense>}

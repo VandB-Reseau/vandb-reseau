@@ -48,9 +48,11 @@ test('114 : sans réseau, la note et la tâche sont gardées sur l’appareil et
   await context.setOffline(true)
   // Note créée en réserve
   await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Note', exact: true }).click()
-  await page.getByRole('dialog').getByLabel('Note', { exact: true }).or(page.getByRole('dialog').getByRole('textbox', { name: /Note|Texte/ })).first().fill('Vitrine refaite, à revoir en décembre')
-  await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer' }).click()
+  // La note s'écrit dans le carnet (25/11/2026)
+  await page.getByRole('menuitem', { name: 'Note au carnet' }).click()
+  const barre = page.getByRole('region', { name: 'Nouvelle note' })
+  await barre.getByRole('textbox', { name: 'Note sur Annecy Test' }).fill('Vitrine refaite, à revoir en décembre')
+  await barre.getByRole('button', { name: 'Noter' }).click()
   await expect(page.getByText('Note gardée sur l’appareil : elle partira seule au retour du réseau.')).toBeVisible()
   // Tâche créée aussi
   await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).click()

@@ -24,6 +24,8 @@ import TaskAltOutlined from '@mui/icons-material/TaskAltOutlined'
 import { Initiales } from './Social'
 import { VuesRapides, styleFiltre } from './VuesRapides'
 import { SaisieNote, type ContenuNote } from './SaisieNote'
+import { creerOuGarder } from '../lib/horsLigne'
+import { typesContact } from '../data/chiffres'
 import { LigneVide, styleBloc } from './Section'
 import { useMessageAnnulable } from './Annulable'
 import { useAuth } from '../auth/AuthContext'
@@ -103,15 +105,17 @@ export function Carnet({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     return () => window.clearTimeout(t)
   }, [demandee])
 
-  const agir = async (f: () => Promise<unknown>, ok: string, annuler?: () => void) => {
+  const agir = async (f: () => Promise<unknown>, ok: string | (() => string), annuler?: () => void) => {
     setOccupe(true)
-    try { await f(); await recharger(); signaler(ok, annuler); return true }
+    try { await f(); await recharger(); signaler(typeof ok === 'string' ? ok : ok(), annuler); return true }
     catch { signaler('La note n’est pas enregistrée. Vérifie ta connexion, puis réessaie.'); return false }
     finally { setOccupe(false) }
   }
   const noter = ({ texte, ton, themes, mentions }: ContenuNote) => {
     const note: NoteMagasin = { id: nouvelIdNote(), date: reseau.jour, quand: new Date().toISOString(), texte, par: moi, ton, ...(themes.length ? { themes } : {}), ...(mentions.length ? { mentions } : {}) }
-    return agir(() => enregistrerNoteMagasin(m.nom, note), mentions.length ? `Note enregistrée. ${mentions.join(', ')} ${mentions.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Note enregistrée.')
+    // Sans réseau, la note est gardée sur l'appareil et part seule au retour (choix 114)
+    let gardee = false
+    return agir(async () => { gardee = await creerOuGarder('note', `Note · ${m.nom}`, { magasin: m.nom, note }, () => enregistrerNoteMagasin(m.nom, note)) }, () => gardee ? 'Note gardée sur l’appareil : elle partira seule au retour du réseau.' : mentions.length ? `Note enregistrée. ${mentions.join(', ')} ${mentions.length > 1 ? 'sont prévenus' : 'est prévenu'}.` : 'Note enregistrée.')
   }
 
   // 6 derniers mois, par ton
@@ -124,7 +128,7 @@ export function Carnet({ reseau, m }: { reseau: Reseau; m: Magasin }) {
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 300px' }, alignItems: 'start' }}>
       <Box sx={{ display: 'grid', gap: 2, minWidth: 0 }}>
         <Card component="section" aria-label="Nouvelle note" sx={{ ...styleBloc, p: 1.5 }}>
-          <SaisieNote label={`Note sur ${m.nom}`} autres={autres} envoyer={noter} occupe={occupe || !moi} />
+          <SaisieNote label={`Note sur ${m.nom}`} autres={autres} envoyer={noter} occupe={occupe || !moi} autoFocus={params.get('ecrire') === '1'} />
         </Card>
 
         <Box sx={{ minWidth: 0 }}>
@@ -192,6 +196,8 @@ function LigneCompteRendu({ v }: { v: Visite }) {
       <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }}>
         <Box component="span" sx={{ fontWeight: 700 }}>{`Compte rendu · ${libelleTypeVisite(v.type)} du ${dateCourte(v.date)}`}</Box>
         {v.visiteurs.length > 0 && <Box component="span" sx={{ color: 'text.secondary' }}>{` · ${v.visiteurs.join(', ')}`}</Box>}
+        {/* Compte rendu d'échange (25/11/2026) : quelques lignes, lues sur place */}
+        {typesContact.includes(v.type) && v.notes.trim() && <Box component="span" sx={{ display: 'block', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', mt: 0.25 }}>{v.notes}</Box>}
       </Typography>
       <Button component={RouterLink} to={lienCompteRendu(v)} size="small" sx={{ minHeight: 48 }} aria-label={`Ouvrir le compte rendu du ${dateCourte(v.date)}`}>Ouvrir</Button>
     </Box>

@@ -111,7 +111,7 @@ test('une alerte ouverte par un collègue arrive dans À traiter et la mention d
   await expect(page.getByRole('article', { name: /^Note alerte/ })).toBeVisible()
 })
 
-test('la messagerie quitte les menus ; le « + » propose une note avec son ton', async ({ page, isMobile }) => {
+test('la messagerie quitte les menus ; la note s’écrit au carnet, l’appel devient un compte rendu d’échange', async ({ page, isMobile }) => {
   await seConnecter(page, { config: { notes_magasins: notes } })
   if (isMobile) {
     await expect(page.getByRole('link', { name: 'Messages' })).toHaveCount(0)
@@ -121,11 +121,30 @@ test('la messagerie quitte les menus ; le « + » propose une note avec son ton'
   await page.goto('./#/magasins/Lyon%20Test')
   await page.getByRole('button', { name: 'Ajouter', exact: true }).first().click()
   await expect(page.getByRole('menuitem', { name: 'Message' })).toHaveCount(0)
-  await page.getByRole('menuitem', { name: 'Note' }).click()
-  const d = page.getByRole('dialog', { name: 'Nouvelle note' })
-  await expect(d.getByText(/Équipe seule/)).toHaveCount(0)
-  await expect(d.getByRole('button', { name: 'Ton : Info' })).toBeVisible()
+  // Plus de note à la volée (Joseph, 25/11/2026) : « Note au carnet » ouvre le carnet, la barre prête à écrire
+  await page.getByRole('menuitem', { name: 'Note au carnet' }).click()
+  await expect(page).toHaveURL(/vue=carnet/)
+  const champ = page.getByRole('region', { name: 'Nouvelle note' }).getByRole('textbox', { name: 'Note sur Lyon Test' })
+  await expect(champ).toBeFocused()
+  await expect(page.getByRole('region', { name: 'Nouvelle note' }).getByRole('button', { name: 'Ton : Info' })).toBeVisible()
   expect(await textesTropPetits(page)).toEqual([])
+})
+
+test('un appel se note en compte rendu d’échange : quelques lignes, rangées dans le carnet du magasin', async ({ page, isMobile }) => {
+  const ecritures: Ecriture[] = []
+  await seConnecter(page, { ecritures, persister: true })
+  await page.goto('./#/magasins/Lyon%20Test?vue=carnet')
+  await page.getByRole('main').getByRole('button', { name: 'Ajouter', exact: true }).first().click()
+  await page.getByRole('menuitem', { name: 'Appel' }).click()
+  const d = page.getByRole('dialog', { name: 'Compte rendu d’échange' })
+  await expect(d.getByRole('combobox', { name: 'Magasin' })).toHaveCount(0)
+  await expect(d.getByRole('switch')).toHaveCount(0)
+  await d.getByRole('textbox', { name: 'Ce qui s’est dit' }).fill('Il relance la dégustation du samedi, chiffres du bar à revoir ensemble.')
+  await lisible(page, isMobile)
+  await d.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Échange rangé dans le dossier de Lyon Test.')).toBeVisible()
+  const ligne = (ecritures.find((e) => e.table === 'visits' && e.methode === 'POST')!.corps as Record<string, unknown>[])[0]
+  expect(ligne).toMatchObject({ store: 'Lyon Test', type: 'appel', signed_required: false })
 })
 
 // Carnet du réseau (Joseph, 25/11/2026) : toutes les notes du périmètre sur une page, ce qui reste à traiter en tête,

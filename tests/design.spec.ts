@@ -15,7 +15,7 @@ test.afterEach(async ({ page }) => {
 const DIRECTEUR = 'Dominique DIRECTION'
 const sansDebordement = (l: Locator) => l.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
-test('le bouton Créer ouvre sous lui un menu : visite, note, tâche, photo, événement', async ({ page, isMobile }, info) => {
+test('le bouton Créer ouvre sous lui un menu : visite, appel, tâche, photo, événement', async ({ page, isMobile }, info) => {
   // Refonte (Joseph, 09/11/2026, 9A) : sur PC, plus de bouton Créer ; Ctrl K et le bouton de chaque page (tests/refonte-saas.spec.ts)
   test.skip(!isMobile, 'téléphone seulement')
   await seConnecter(page)
@@ -25,7 +25,7 @@ test('le bouton Créer ouvre sous lui un menu : visite, note, tâche, photo, év
   const bouton = (await creer.boundingBox())!
   await creer.click()
   const d = page.getByRole('menu', { name: 'Ajouter', exact: true })
-  await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Appel', 'Note', 'Tâche', 'Photo', 'Événement'])
+  await expect(d.getByRole('menuitem')).toHaveText(['Visite', 'Appel', 'Tâche', 'Photo', 'Événement'])
   // Menu déroulant collé au bouton, pas de fenêtre au centre (Joseph, 22/10/2026) ; vague 8 (110A) : le « + » flotte
   // en bas, le menu s'ouvre au-dessus de lui
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -41,8 +41,8 @@ test('le bouton Créer ouvre sous lui un menu : visite, note, tâche, photo, év
   await expect(page.getByRole('dialog', { name: 'Ajouter une tâche' })).toBeVisible()
   await page.getByRole('dialog', { name: 'Ajouter une tâche' }).getByRole('button', { name: 'Annuler' }).click()
   await creer.click()
-  await page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem', { name: 'Note' }).click()
-  await expect(page.getByRole('dialog', { name: 'Nouvelle note' })).toBeVisible()
+  await page.getByRole('menu', { name: 'Ajouter', exact: true }).getByRole('menuitem', { name: 'Appel' }).click()
+  await expect(page.getByRole('dialog', { name: 'Compte rendu d’échange' })).toBeVisible()
 })
 
 test('l’accueil et la fiche magasin tiennent dans la largeur ; la fiche s’ouvre sur sa vue d’ensemble', async ({ page, isMobile }, info) => {
