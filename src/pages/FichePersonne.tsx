@@ -28,7 +28,6 @@ import StorefrontOutlined from '@mui/icons-material/StorefrontOutlined'
 import { AvecReseau } from '../components/EtatDonnees'
 import { EmptyState } from '../components/EmptyState'
 import { DialogDirecteur, DialogFranchise, DialogRR } from '../components/EditionEquipe'
-import { PastilleCharge } from '../components/Charge'
 import { PastilleStatut } from '../components/Pastilles'
 import { ListeMagasins } from '../components/ListeMagasins'
 import { Ligne, Section, LigneVide } from '../components/Section'
@@ -41,6 +40,9 @@ import { dateCourte, dateLongue, lienCoach, lienFiche, lienFranchise, lienRR, te
 import type { Magasin, Reseau } from '../data/modele'
 import { cartouche } from '../components/Social'
 import { FilAriane } from '../components/FilAriane'
+import { EnsembleEquipe, LignesCoachs, TableauMagasinsEquipe } from '../components/FicheEquipe'
+import { anneeDe, suiviRythme } from '../data/visites'
+import { actionsDes } from '../data/actions'
 
 // Bloc « Fiche personnelle » commun aux quatre rôles
 export function SectionFichePersonnelle({ reseau, r, action }: { reseau: Reseau; r: RefPersonne; action?: ReactNode }) {
@@ -115,12 +117,23 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
   const rr = (reseau.rrs.find((r) => r.id === id) ?? reseau.anciens?.rrs.find((r) => r.id === id))!
   const depart = departDe(reseau, { type: 'rr', cle: id })
   const surPC = useMediaQuery(useTheme().breakpoints.up('md'), { noSsr: true })
-  const coachs = reseau.equipe.filter((c) => c.rr?.id === id)
-  const magasins = reseau.magasins.filter((m) => m.rr?.id === id)
-  const directs = magasins.filter((m) => m.rrEnDirect)
+  // Vitesse (comme #261) : listes et calculs gardés tant que les données ne changent pas (le portefeuille était refait à chaque affichage)
+  const coachs = useMemo(() => reseau.equipe.filter((c) => c.rr?.id === id), [reseau, id])
+  const magasins = useMemo(() => reseau.magasins.filter((m) => m.rr?.id === id), [reseau, id])
+  const directs = useMemo(() => magasins.filter((m) => m.rrEnDirect), [magasins])
   const role = rr.integres ? 'Responsable Magasins Intégrés' : libelleRole('rr')
   const { referentiels } = useDroits()
-  const p = useMemo(() => portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir')), [reseau, magasins])
+  const noms = useMemo(() => new Set(magasins.map((m) => m.nom)), [magasins])
+  const rythmeAn = useMemo(() => suiviRythme(reseau, anneeDe(reseau.jour)), [reseau])
+  const rythme = useMemo(() => rythmeAn.filter((l) => noms.has(l.magasin.nom)), [rythmeAn, noms])
+  const p = useMemo(() => portefeuilleDe(reseau, magasins.filter((m) => m.statut !== 'avenir'), rythme), [reseau, magasins, rythme])
+  const actions = useMemo(() => actionsDes(reseau, noms), [reseau, noms])
+  // 418 : chaque Coach rattaché avec sa charge et son rythme de visite de l'année
+  const lignesCoachs = useMemo(() => coachs.map((c) => {
+    const ms = new Set(magasinsDuCoach(reseau, c.nom).map((m) => m.nom))
+    const l = rythmeAn.filter((x) => ms.has(x.magasin.nom))
+    return { nom: c.nom, lien: lienCoach(c.nom), magasins: ms.size, charge: chargeA(reseau, c.nom), faites: l.reduce((t, x) => t + x.faites, 0), reference: l.reduce((t, x) => t + x.reference, 0) }
+  }), [reseau, coachs, rythmeAn])
   return (
     <>
       <FilAriane pcSeulement etapes={[{ libelle: 'Équipe', lien: '/equipe' }]} ici={rr.nom} />
@@ -137,7 +150,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
       <ContenuOnglet>
         {vue === 'ensemble' && (
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' }, alignItems: 'start' }}>
-            <BlocPortefeuille reseau={reseau} p={p} />
+            <EnsembleEquipe reseau={reseau} magasins={magasins} rythme={rythme} p={p} carte={<BlocPortefeuille reseau={reseau} p={p} />} />
             <Box sx={{ display: 'grid', gap: 2 }}>
               <SectionFichePersonnelle reseau={reseau} r={{ type: 'rr', cle: id }} />
               {!surPC && referentiels && <BoutonDepart bouton reseau={reseau} personne={{ type: 'rr', cle: id }} nom={rr.nom} signaler={setMessage} />}
@@ -149,13 +162,7 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
         {vue === 'magasins' && <Box sx={{ display: 'grid', gap: 2 }}>
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, alignItems: 'start' }}>
             <Section titre="Coachs rattachés">
-              {coachs.length === 0 ? <LigneVide>Aucun Coach rattaché.</LigneVide> : coachs.map((c) => (
-                <Rangee key={c.nom}>
-                  <Link component={RouterLink} to={lienCoach(c.nom)} sx={{ flex: 1, py: 1.5, fontWeight: 500 }}>{c.nom}</Link>
-                  <Typography variant="body2" color="text.secondary">{pluriel(magasinsDuCoach(reseau, c.nom).length, 'magasin')}</Typography>
-                  <PastilleCharge reseau={reseau} charge={chargeA(reseau, c.nom)} />
-                </Rangee>
-              ))}
+              {coachs.length === 0 ? <LigneVide>Aucun Coach rattaché.</LigneVide> : <LignesCoachs reseau={reseau} coachs={lignesCoachs} />}
             </Section>
             {directs.length > 0 && (
               <Section titre="Magasins gérés en direct">
@@ -168,7 +175,9 @@ function PageRR({ reseau, id }: { reseau: Reseau; id: string }) {
               </Section>
             )}
           </Box>
-          <ListeMagasinsAdaptee magasins={magasins} vide="Aucun magasin dans son périmètre." />
+          {surPC && magasins.length > 0
+            ? <TableauMagasinsEquipe reseau={reseau} magasins={magasins} rythme={rythme} actions={actions} avecCoach />
+            : <ListeMagasinsAdaptee magasins={magasins} vide="Aucun magasin dans son périmètre." />}
         </Box>}
         {edition && <DialogRR reseau={reseau} rr={rr} onFermer={(m) => { setEdition(false); if (m?.includes('supprimé')) naviguer('/equipe', { replace: true }); else if (m) setMessage(m) }} />}
         <Snackbar open={!!message} autoHideDuration={5000} onClose={() => setMessage('')} message={message} />

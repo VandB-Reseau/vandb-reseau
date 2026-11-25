@@ -36,7 +36,7 @@ import { EmptyState } from '../components/EmptyState'
 import { DialogVisite, visiteurs } from '../components/DialogVisite'
 import { PastilleSignature } from '../components/PastilleVisite'
 import { CarteLignes, ChoixAffichage, Initiales, LigneCompacte, MiniPhotos, Pastille, TitreSection, useAffichage, useParTranches } from '../components/Social'
-import { anneeDe, anneesDisponibles, libelleEtapeVisite, libellePasVu, lienCompteRendu, lienVisite, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
+import { anneeDe, anneesDisponibles, libelleEtapeVisite, libellePasVu, lienCompteRendu, lienVisite, partEcoulee, semestresDisponibles, suiviRythme, type LigneRythme } from '../data/visites'
 import { nineBox } from '../data/sante'
 import { PastilleCase } from '../components/Sante'
 import { FiltreMenu } from '../components/FiltreMenu'
@@ -58,14 +58,6 @@ const pluriel = (n: number, mot: string) => `${n} ${mot}${n > 1 ? 's' : ''}`
 // Jours au-delà du délai de la case (jamais visité en tête)
 const ecart = (l: LigneRythme) => (l.depuis === null ? Infinity : l.depuis - l.delai)
 
-
-// Part de l'année écoulée au jour du réseau (1 pour une année passée) : où l'on devrait en être
-const jourIso = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86400000
-function partEcoulee(a: { debut: string; fin: string }, jour: string): number {
-  if (jour >= a.fin) return 1
-  if (jour < a.debut) return 0
-  return (jourIso(jour) - jourIso(a.debut) + 1) / (jourIso(a.fin) - jourIso(a.debut) + 1)
-}
 
 type GroupeCoach = { coach: string; lien?: string; faites: number; reference: number; signales: LigneRythme[] }
 
